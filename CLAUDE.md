@@ -27,12 +27,12 @@
 4. CI/CD with GitHub Actions: run tests on each commit; upload test artifacts (plus).
 
 ## Status
-- [x] Part 2: API tests. 17 tests in `tests/api/`, passing. Assignment (`@smoke`): API-01 (non-empty,
+- [x] Part 2: API tests. 14 tests in `tests/api/`, passing. Assignment (`@smoke`): API-01 (non-empty,
   every product has brand awara), API-02 (exactly 1, and it is the-awara-hybrid-mattress-30).
   `@regression`: API-03..07 filter behaviour (`products-filters.spec.ts`), API-08 consistency between
-  the two queries, API-09..12 negative cases (`products-negative.spec.ts`, also `@negative`). Checked
+  the two queries, API-09..11 negative cases (`products-negative.spec.ts`, also `@negative`). Checked
   against the real API on 2026-11-22: unknown/empty brand and missing brand → 400
-  `{ status: "error", error }`; unknown name → 200 empty; unsupported methods → 405 text/plain. API
+  `{ status: "error", error }`; unknown name → 200 empty. Only GET is tested (user decision; POST/PUT/DELETE give 405). API
   findings (asserted as actual behaviour, annotated `finding`): brand is required even with name
   (API-05); lang has no effect and any value is accepted (API-06); brand ignores case but name doesn't
   (API-07a/b). Lists are capped at 200 items (`total_count` can be higher). They were quarantined
@@ -129,8 +129,8 @@ tests/
 - API clients are thin and typed, use Playwright `request` with `params` (no string-built URLs),
   and return the raw `APIResponse`. Assertions live in tests.
 - Every API test goes through `tests/api/support.ts`: `expectProducts` (200 → JSON Content-Type →
-  products schema), `expectApiError` (expected 4xx → JSON → error schema) or `expectTextError`
-  (expected status → text/plain, e.g. 405), then its own assertions.
+  products schema) or `expectApiError` (expected 4xx → JSON → error schema), then its own
+  assertions.
 - When the API behaves differently from what we'd expect, assert the actual behaviour and add a
   `finding` annotation; don't leave a test red on purpose.
 

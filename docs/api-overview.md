@@ -41,7 +41,7 @@ Examples:
 | **200** | Valid query, including one that matches nothing      | JSON, see below (`data: []`, `total_count: 0` when nothing matches)                         | API-01, 02, 04     |
 | **400** | `brand` missing (even with `name`), empty or unknown | `{ "status": "error", "error": "missed brand values" }` or `"No such brand name '<brand>'"` | API-03, 05, 09, 10 |
 | **403** | User-Agent not allowed by Cloudflare                 | `text/html` "Attention Required! \| Cloudflare" page                                        | (README §12)       |
-| **405** | `POST`, `PUT`, `DELETE`                              | `text/plain` "POST not allowed. Defined methods: GET"                                       | API-12             |
+| **405** | `POST`, `PUT`, `DELETE`                              | `text/plain` "POST not allowed. Defined methods: GET"                                       | not tested         |
 
 Unusual `name` values (SQL-like characters, 3000 characters, empty) return 200 with an empty list,
 never a 5xx (API-11).
@@ -130,6 +130,6 @@ Keys on **some** items only:
 
 - Schemas: `src/api/schemas/products.schema.ts` and `error.schema.ts` (zod; required keys typed
   strictly, optional keys `.optional()`, `.passthrough()` for keys we don't check)
-- Client: `src/api/ProductsApi.ts` (`getProducts`, `sendProducts` for other HTTP methods)
-- Shared checks: `tests/api/support.ts` (`expectProducts`, `expectApiError`, `expectTextError`)
+- Client: `src/api/ProductsApi.ts` (`getProducts`)
+- Shared checks: `tests/api/support.ts` (`expectProducts`, `expectApiError`)
 - Tests: `tests/api/products.spec.ts`, `products-filters.spec.ts`, `products-negative.spec.ts`

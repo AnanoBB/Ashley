@@ -66,8 +66,8 @@ Priority: **P1** = assignment requirement or core purchase path · **P2** = impo
 
 ### API
 
-All automated in `tests/api/` and checked against the real API on 2026-11-22. Every test except API-12
-(whose 405 body is plain text) checks the status, a JSON `Content-Type` and the zod schema
+All automated in `tests/api/` and checked against the real API on 2026-11-22. Every test checks the
+status, a JSON `Content-Type` and the zod schema
 (products or error) before its own assertions. Where
 the API behaves differently from what we'd expect, the test asserts the actual behaviour and carries
 a `finding` annotation.
@@ -86,13 +86,14 @@ a `finding` annotation.
 | API-09  | API   | No query parameters returns 400 "missed brand values"                                                               | Negative    | P2       | `@negative`. `products-negative.spec.ts`                                                    |
 | API-10  | API   | Empty brand (`brand=`) returns 400 "No such brand name"                                                             | Negative    | P3       | `@negative`                                                                                 |
 | API-11  | API   | A name with SQL-like characters, 3000 characters, or an empty value returns 200 with empty `data`, never 5xx        | Negative    | P2       | `@negative`, 3 tests                                                                        |
-| API-12  | API   | `POST`, `PUT` and `DELETE /products` return 405 "Defined methods: GET"                                              | Negative    | P3       | `@negative`, 3 tests. The body is `text/plain`, not the JSON error shape                    |
 
 Considered but not automated:
 
 - `total_count` equals `data.length` as a rule for every brand: lists are capped at **200** items, so
   it fails for larger brands (`nectar`: 1025 total, 200 returned). Recorded as a finding. For `awara`
   (91) API-07a and API-08 check it as a precondition before comparing lists.
+- `POST`, `PUT` and `DELETE /products`: out of scope, only `GET` is tested. (Observed on
+  2026-11-22: they return 405 `text/plain` "Defined methods: GET".)
 - A partial name (`the-awara-hybrid`) not matching the full product: covered in spirit by API-04 and
   API-07b (the name filter is exact).
 - The User-Agent header on every request: set once in `playwright.config.ts` and proven by the API
@@ -135,7 +136,7 @@ Considered but not automated:
 **Total: 35 cases.** 11 are P1 (the assignment plus the core path), 15 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
-**Automated (34 tests):** all API cases (API-01 … 12, 17 tests) and UI-01, 02, 03, 05, 06 (×3),
+**Automated (31 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
 07 (×3), 08, 09, 12, 13/14/15 (one test), 16, 21, 22.
 
 **Not automated:**
