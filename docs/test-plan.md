@@ -49,7 +49,7 @@ first slice of a regression suite that can grow later.
   rule.
 - **Overlays:** handled once with `page.addLocatorHandler()` and a pre-set cookie consent, never with
   sleeps.
-- **Locators:** prefer test IDs and role-based locators, as documented in `docs/exploration.md`. No CSS
+- **Locators:** role-based first, then labels, test IDs and text, as documented in `docs/exploration.md`. No CSS
   classes (MUI hashes them).
 - **Test isolation:** a fresh browser context per test, because the cart is stored on the server and
   tied to the browser's auth token.
@@ -136,7 +136,7 @@ Considered but not automated:
 | UI-25 | UI    | An unknown URL returns 404 and shows the not-found page, whose "Back to home" link works                                        | Negative | P2       |                                                                               |
 | UI-26 | UI    | When `POST /carts/my/items` fails (stubbed 500), the shopper stays on the product page and the cart stays empty                 | Negative | P2       | Finding #29: no error message is shown                                        |
 
-**Total: 37 cases.** 11 are P1 (the assignment plus the core path), 17 are P2 and 9 are P3. For this
+**Total: 38 cases.** 10 are P1 (the assignment plus the core path), 19 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
 **Automated (33 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
@@ -145,11 +145,11 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 **Not automated:**
 
-| ID                  | Why                                                                                             |
-| ------------------- | ----------------------------------------------------------------------------------------------- |
-| UI-04               | Cut in the submission review; the popups are still closed by fixtures in every UI test          |
-| UI-18, UI-19, UI-20 | Cut: unstable at 0 retries because of cart page bugs (README findings 4–5, exploration #25–#26) |
-| UI-10, 11, 17, 23   | P3 backlog                                                                                      |
+| ID                  | Why                                                                                                                                     |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| UI-04               | Cut in the submission review; the popups are still closed by fixtures in every UI test                                                  |
+| UI-18, UI-19, UI-20 | Cut: unstable without retries because of cart page bugs (README findings 4–5, exploration #25–#26); tests aren't kept green by retrying |
+| UI-10, 11, 17, 23   | P3 backlog                                                                                                                              |
 
 ## 6. Risks and known issues
 
@@ -161,7 +161,7 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 | Delayed overlays (cookie banner, promo popup, upsell popups)                                       | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                                                            |
 | A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.                                                       |
 | Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.                                                      |
-| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers everywhere, and 1 retry only in CI (counted as flaky in the run summary).                                             |
+| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers and 1 retry, in CI and locally (a pass on retry is counted as flaky in the run summary).                              |
 | Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test (UI-22 checks it). No checkout, so no orders are created.                                              |
 
 ## 7. Entry and exit criteria
