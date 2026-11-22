@@ -1,5 +1,11 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/**
+ * The menu panel renders after the page's route prefetches (`/mattress?_rsc`, …), which can take
+ * ~20 s on the shared QA env; the menu reports open (aria-expanded) while the panel is still empty.
+ */
+const MENU_CONTENT_TIMEOUT = 45_000;
+
 export class Header {
   readonly logo: Locator;
   readonly cartIcon: Locator;
@@ -30,7 +36,7 @@ export class Header {
         timeout: 2_000,
       });
     }).toPass();
-    await expect(this.shopAllMattresses).toBeVisible();
+    await expect(this.shopAllMattresses).toBeVisible({ timeout: MENU_CONTENT_TIMEOUT });
   }
 
   private get mattressesToggle(): Locator {
