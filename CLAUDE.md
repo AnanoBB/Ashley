@@ -43,8 +43,8 @@ Playwright MCP (`.mcp.json`) is for exploring the app only, never in CI.
 
 Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, utils, config),
 `tests/api`, `tests/ui`, `scripts/` (CI summary, known-bug marking, image tag check, and
-`report-scripts.test.mjs`), `docs/` (exploration, test plan, API overview). Config: `playwright.config.ts`, `allurerc.mjs`,
-`.env.example` (keep in sync; `.env` is not committed).
+`report-scripts.test.mjs`), `docs/` (exploration, test plan, API overview). Config:
+`playwright.config.ts`, `allurerc.mjs`, `.env.example` (keep in sync; `.env` is not committed).
 
 ## Conventions
 - Specs import `test`/`expect` from `src/fixtures`, never from `@playwright/test`.

@@ -64,7 +64,7 @@ it in the reports and run it alone. All cases, with priorities, are in
 | `@negative`        | Bad input and failure handling            | 7     |
 | `@known-bug`       | Checks a known site bug, expected to fail | 2     |
 | `@api`, `@ui`      | Layer                                     | 14/19 |
-| `@cart`, `@header` | UI feature area                           |       |
+| `@cart`, `@header` | UI feature area                           | 6/9   |
 
 | Area                            | Tests                                                                                                                                                                                                        |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -196,8 +196,8 @@ docs/                      exploration, test plan, API overview, CI details, dev
 | 1   | Hero "Shop Mattress" goes to `/mattresses/essential-latex-hybrid-mattress`; `/mattress` is another product (spec question) | UI-02, exploration #1      |
 | 2   | Header "Mattresses" opens `/mattress` (one product) instead of the `/mattresses` listing (spec question)                   | UI-09, exploration #13     |
 | 3   | A failed add-to-cart shows no error: the click silently does nothing                                                       | UI-26, exploration #29     |
-| 4   | Cart: the protection-plan dialog opens a few seconds after landing and can swallow a click made at that moment             | CI trace                   |
-| 5   | Cart: an item removed while the auto-coupon is applied can reappear on the page although the server deleted it             | Trace: `DELETE` 200        |
+| 4   | Cart: the protection-plan dialog opens a few seconds after landing and can swallow a click made at that moment             | exploration: Cart, step 5  |
+| 5   | Cart: an item removed while the auto-coupon is applied can reappear on the page although the server deleted it             | exploration #26            |
 | 6   | API: `brand` is required, even with `name` (400 "missed brand values")                                                     | API-05                     |
 | 7   | API: `lang` has no effect; `es`, `fr` and invalid values return the same body as `en`                                      | API-06                     |
 | 8   | API: `brand=AWARA` works, an uppercase `name` finds nothing; an empty `name` matches nothing instead of being ignored      | API-07b, API-11            |

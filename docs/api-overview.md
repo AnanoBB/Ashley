@@ -129,7 +129,7 @@ Keys on **some** items only:
 ## Where this is used in the repo
 
 - Schemas: `src/api/schemas/products.schema.ts` and `error.schema.ts` (zod; required keys typed
-  strictly, optional keys `.optional()`, `.passthrough()` for keys we don't check)
+  strictly, optional keys `.optional()`, `z.looseObject` for objects whose other keys we don't check)
 - Client: `src/api/ProductsApi.ts` (`getProducts`)
 - Shared checks: `tests/api/support.ts` (`expectProducts`, `expectApiError`)
 - Tests: `tests/api/products.spec.ts`, `products-filters.spec.ts`, `products-negative.spec.ts`
