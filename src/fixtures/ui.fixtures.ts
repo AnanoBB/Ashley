@@ -1,5 +1,4 @@
 import { test as base } from '@playwright/test';
-import { Header } from '../components/Header';
 import { OVERLAYS, registerOverlayHandlers, type Overlay } from '../components/overlays';
 import { CartPage } from '../pages/CartPage';
 import { HomePage } from '../pages/HomePage';
@@ -21,7 +20,6 @@ interface UiOptions {
 const MARKETING_SCRIPT_HOSTS = /^https:\/\/(cdn|st)\.dynamicyield\.com\//;
 
 interface UiFixtures {
-  header: Header;
   homePage: HomePage;
   productPage: ProductPage;
   cartPage: CartPage;
@@ -51,9 +49,6 @@ export const uiTest = base.extend<UiOptions & UiFixtures>({
     await use(page);
   },
 
-  header: async ({ page }, use) => {
-    await use(new Header(page));
-  },
   homePage: async ({ page }, use) => {
     await use(new HomePage(page));
   },
