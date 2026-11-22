@@ -10,6 +10,7 @@
   "scripts": {
     "test": "playwright test",
     "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=ui",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "typecheck": "tsc --noEmit",

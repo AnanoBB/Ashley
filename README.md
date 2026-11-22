@@ -33,13 +33,20 @@ cp .env.example .env   # optional: override API_URL / BASE_URL
 
 ## Running tests
 
-| Command                             | What it does              |
-| ----------------------------------- | ------------------------- |
-| `npm test`                          | Run all tests             |
-| `npm run test:api`                  | Run the API project only  |
-| `npx playwright test --grep @smoke` | Run tests tagged `@smoke` |
-| `npm run lint`                      | ESLint + Prettier check   |
-| `npm run typecheck`                 | TypeScript type check     |
+| Command                             | What it does                    |
+| ----------------------------------- | ------------------------------- |
+| `npm test`                          | Run all tests                   |
+| `npm run test:api`                  | Run the API project only        |
+| `npm run test:ui`                   | Run the UI project only         |
+| `npx playwright test --grep @api`   | Run tests tagged `@api`         |
+| `npx playwright test --grep @ui`    | Run tests tagged `@ui`          |
+| `npx playwright test --grep @smoke` | Run `@smoke` tests (API and UI) |
+| `npm run test:ui -- --grep @smoke`  | Run only the UI `@smoke` tests  |
+| `npm run lint`                      | ESLint + Prettier check         |
+| `npm run typecheck`                 | TypeScript type check           |
+
+Tags: `@api` and `@ui` by layer; `@smoke` and `@regression` by depth; `@cart` and `@header` by
+feature.
 
 ## Reports
 
