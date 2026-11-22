@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, type Response } from '@playwright/test';
 import { BasePage } from './BasePage';
+import { escapeRegExp } from '../utils/regexp';
 
 /** The buy box (sizes, prices) loads after hydration and can take >15 s on the shared QA env. */
 const BUY_BOX_TIMEOUT = 45_000;
@@ -32,8 +33,11 @@ export class ProductPage extends BasePage {
     // exact: the product-card button lower on the page is "Add To Cart".
     this.addToCartButton = page.getByRole('button', { name: 'Add to Cart', exact: true });
     // includeHidden: when another MUI modal was opened earlier (e.g. the Extend protection plan),
-    // the upsell can be marked aria-hidden although it is on screen.
+    // the upsell can be marked aria-hidden although it is on screen. Scoped to the upgrade dialog
+    // so the Extend modal's own "No Thanks" isn't counted as a declined upsell.
     this.upsellNoThanks = page
+      .getByRole('dialog', { includeHidden: true })
+      .filter({ hasText: 'Upgrade to' })
       .getByRole('button', { name: 'No Thanks', includeHidden: true })
       .filter({ visible: true })
       .first();
@@ -55,7 +59,9 @@ export class ProductPage extends BasePage {
    * dropped, so retry until the selector shows the requested size.
    */
   async selectSize(title: string): Promise<void> {
-    const option = this.page.getByRole('option', { name: new RegExp(`^${title} \\(`) });
+    const option = this.page.getByRole('option', {
+      name: new RegExp(`^${escapeRegExp(title)} \\(`),
+    });
     await expect(async () => {
       if (!(await option.isVisible())) {
         await this.sizeSelect.click();
@@ -78,15 +84,19 @@ export class ProductPage extends BasePage {
       { timeout: ADD_TO_CART_TIMEOUT },
     );
     let upsellDeclined = false;
-    await this.addToCartButton.click();
-    await expect(async () => {
-      if (!this.isOnCartPage()) {
-        await this.upsellNoThanks.click({ timeout: 2_000 });
-        upsellDeclined = true;
-      }
-      expect(this.isOnCartPage(), 'routed to /checkout/cart').toBe(true);
-    }).toPass({ timeout: ADD_TO_CART_TIMEOUT });
-    return { response: await addRequest, upsellDeclined };
+    const routedToCart = async (): Promise<void> => {
+      await this.addToCartButton.click();
+      await expect(async () => {
+        if (!this.isOnCartPage()) {
+          await this.upsellNoThanks.click({ timeout: 2_000 });
+          upsellDeclined = true;
+        }
+        expect(this.isOnCartPage(), 'routed to /checkout/cart').toBe(true);
+      }).toPass({ timeout: ADD_TO_CART_TIMEOUT });
+    };
+    // Awaited together so a failed click flow doesn't leave the response wait rejecting unhandled.
+    const [response] = await Promise.all([addRequest, routedToCart()]);
+    return { response, upsellDeclined };
   }
 
   private isOnCartPage(): boolean {

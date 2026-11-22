@@ -35,7 +35,7 @@ export class Header {
       await expect(this.mattressesToggle).toHaveAttribute('aria-expanded', 'true', {
         timeout: 2_000,
       });
-    }).toPass();
+    }).toPass({ timeout: 30_000 });
     await expect(this.shopAllMattresses).toBeVisible({ timeout: MENU_CONTENT_TIMEOUT });
   }
 
