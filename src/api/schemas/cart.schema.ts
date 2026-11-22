@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { MoneySchema } from './products.schema';
 
-// Response of `POST {API_URL}/carts/my/items` as observed from the storefront (2026-11-21).
+// Response of `POST {API_URL}/carts/my/items` and `GET {API_URL}/carts/my` as observed from the
+// storefront (2026-11-21).
 export const CartResponseSchema = z.looseObject({
   status: z.literal('ok'),
   result: z.looseObject({

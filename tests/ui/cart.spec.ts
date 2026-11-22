@@ -191,8 +191,9 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
       });
 
       await test.step('The shopper stays on the product page and can try again', async () => {
-        await expect(page).toHaveURL(mattress.path);
+        // The button check waits for the page to settle, so a late redirect would fail the URL check.
         await expect(productPage.addToCartButton).toBeEnabled();
+        await expect(page).toHaveURL(mattress.path);
       });
 
       await test.step('The cart is empty', async () => {

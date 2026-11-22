@@ -20,7 +20,8 @@ export const CatalogProductSchema = z.looseObject({
   name: z.string().min(1),
   title: z.string().min(1),
   pricing: z.looseObject({
-    price: z.looseObject({ amount: z.number().int().positive(), currency: z.string() }),
+    // Expected prices are formatted as USD (formatUsd), so another currency must fail here.
+    price: z.looseObject({ amount: z.number().int().positive(), currency: z.literal('$') }),
   }),
   properties: z.array(PropertySchema),
 });
