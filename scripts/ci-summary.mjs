@@ -27,13 +27,16 @@ for (const attempts of attemptsByTest.values()) {
   attempts.sort((a, b) => a.stop - b.stop);
   const last = attempts.at(-1);
   const project = last.labels.find((label) => label.name === 'parentSuite')?.value ?? 'unknown';
-  const flaky =
-    last.status === 'passed' &&
-    attempts.some((attempt) => attempt.status === 'failed' || attempt.status === 'broken');
   // Failed as expected (marked by scripts/mark-known-bugs.mjs): counted apart from real failures.
   const knownBug = last.labels.some(
     (label) => label.name === 'knownBug' && label.value === 'expected-failure',
   );
+  // Ended as expected (passed, or failed with its known bug) after a failed or broken attempt.
+  const flaky =
+    (last.status === 'passed' || knownBug) &&
+    attempts
+      .slice(0, -1)
+      .some((attempt) => attempt.status === 'failed' || attempt.status === 'broken');
   const outcome = flaky ? 'flaky' : knownBug ? 'known bug' : last.status;
   const counts = byProject.get(project) ?? Object.fromEntries(COLUMNS.map((column) => [column, 0]));
   counts[outcome] = (counts[outcome] ?? 0) + 1;

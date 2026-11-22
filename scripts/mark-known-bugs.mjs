@@ -6,7 +6,8 @@
 // Each marked result gets a `knownBug` label (`expected-failure` or `no-longer-reproduces`), which
 // the Allure categories and scripts/ci-summary.mjs match on. A known-bug test that failed for
 // another reason (its message lacks the `expectedError` label from knownBug(), e.g. a page error or
-// a broken locator) is marked "broken", so it shows as a test problem instead of the known bug.
+// a broken locator, or it has no such label) is marked "broken", so it shows as a test problem
+// instead of the known bug.
 // With --strict (the CI test job) it also exits 1 then: Playwright counts any failure of a
 // test.fail() test as a pass, so without this the job would stay green.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -42,7 +43,11 @@ for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json
   if (!isKnownBug || alreadyMarked) {
     continue;
   }
-  if (result.status === 'passed' && message && expectedError && !message.includes(expectedError)) {
+  if (
+    result.status === 'passed' &&
+    message &&
+    !(expectedError && message.includes(expectedError))
+  ) {
     result.status = 'broken';
     result.statusDetails.message = UNEXPECTED_FAILURE_PREFIX + message;
     result.labels.push({ name: 'knownBug', value: 'unexpected-failure' });
