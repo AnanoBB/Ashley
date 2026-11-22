@@ -70,6 +70,10 @@ Then open a report: `npm run report:html` (Playwright) or `npm run allure:genera
 Optional: `cp .env.example .env` to override the addresses or the User-Agent
 ([see below](#environment-variables)).
 
+**Or with Docker** (no Node or browser needed on your machine, the same environment as CI):
+`npm run test:docker` ([see below](#running-in-docker)). It needs Docker and npm; if you have no
+npm either, use the [plain `docker` commands](#running-in-docker).
+
 ## 3. What is tested
 
 **31 tests: 14 API + 17 UI.** Each test has an ID (e.g. `API-01`, `UI-13`) at the start of its name, so
@@ -209,8 +213,41 @@ store's catalog API and compare the website against them.
 | `npx playwright test -g "UI-13"`            | One test, by ID or part of its name                     |
 | `npx playwright test --grep @negative`      | By tag                                                  |
 | `npx playwright test --ui`                  | Playwright's UI mode: pick tests, step through them     |
+| `npm run test:docker`                       | Everything, inside the CI Docker image                  |
+| `npm run test:docker -- --project=api`      | Any Playwright options work the same in Docker          |
 | `npm run lint` / `npm run lint:fix`         | ESLint + Prettier check / fix                           |
 | `npm run typecheck`                         | TypeScript check                                        |
+| `npm run check:playwright-image`            | Docker image tag matches the installed Playwright       |
+
+### Running in Docker
+
+Both CI test jobs (API and UI) run in the official Playwright image
+`mcr.microsoft.com/playwright:v1.65.1-noble` (Ubuntu 24.04 with Node, Chromium and its system
+libraries). The `Dockerfile` builds on the same image, so a local Docker run has the same OS,
+browser build and fonts as CI. That makes a CI-only failure reproducible on your machine.
+
+```bash
+npm run test:docker                          # build the image (cached) and run all tests
+npm run test:docker -- --grep @smoke         # extra arguments go to `playwright test`
+USER_AGENT=E2EUI-Tests npm run test:docker -- --project=api   # env vars are passed through
+```
+
+The project folder is mounted into the container, so code changes need no rebuild and the reports
+land in the usual `allure-results/`, `playwright-report/` and `test-results/`. The container keeps
+its own Linux `node_modules`, separate from yours. `.env` is not copied into the image: pass
+settings as environment variables instead (`BASE_URL`, `API_URL`, `USER_AGENT`).
+
+Without npm, the same with plain Docker:
+
+```bash
+docker build -t awara-qa-tests .
+docker run --rm --init --ipc=host -v "$PWD:/app" -v /app/node_modules awara-qa-tests --project=api
+```
+
+`--ipc=host` gives Chromium enough shared memory (Docker's default of 64 MB can crash it), and
+`--init` makes sure browser processes are cleaned up. When Playwright is upgraded, update the image
+tag in the `Dockerfile` and in `.github/workflows/ci.yml`; the CI `lint` job runs
+`npm run check:playwright-image` and fails if they don't match `package-lock.json`.
 
 ### Environment variables
 
@@ -274,8 +311,8 @@ lint ──► test (api) ──┐
 
 | Job                   | What it does                                                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lint`                | ESLint, Prettier and TypeScript checks. Tests only start if this passes.                                                                               |
-| `test (api)` / `(ui)` | One job per project, in parallel. Both always finish, even if the other fails. Chromium is installed only for UI.                                      |
+| `lint`                | ESLint, Prettier and TypeScript checks, and the Docker image tag check. Tests only start if this passes.                                               |
+| `test (api)` / `(ui)` | One job per project, in parallel, both in the Playwright Docker image ([Running in Docker](#running-in-docker)). Both always finish.                   |
 | `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky / known bug counts to the run's **Summary** tab |
 | `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)                           |
 
@@ -309,6 +346,7 @@ Download from the run page → **Artifacts** (kept 14 days), or `gh run download
 playwright.config.ts       User-Agent, URLs, projects (api / ui), workers, retries, reporters
 allurerc.mjs               Allure report name, history file and the known-bug categories
 .env.example               Optional settings (copy to .env)
+Dockerfile, .dockerignore  Local Docker runs, on the same Playwright image as CI
 
 src/
   config/env.ts            Addresses and User-Agent, read from env vars with defaults
@@ -332,6 +370,7 @@ tests/
 
 scripts/ci-summary.mjs     Writes the pass / fail / flaky / known bug table for CI
 scripts/mark-known-bugs.mjs Marks @known-bug expected failures as failed for Allure
+scripts/check-playwright-image.mjs Fails if the Docker image tag doesn't match package-lock.json
 docs/
   exploration.md           What was found exploring the site: locators, popups, 28 possible bugs
   test-plan.md             Scope, all test cases with priorities, risks
@@ -382,6 +421,7 @@ docs/
 | 2 parallel browsers, 1 retry in CI, 0 locally                                                   | The shared QA site times out with 3 or more browsers; 2 is stable and faster. A retry never hides a failure: it shows up as flaky |
 | Unstable tests are removed, not retried until green                                             | A test that fails at random teaches people to ignore red builds                                                                   |
 | User-Agent set once, overridable with `USER_AGENT`                                              | One place to change it for both the browser and the API calls                                                                     |
+| CI tests (API and UI) run in the official Playwright Docker image; the `Dockerfile` uses it too | Same OS, browser and fonts in CI and locally, nothing installed at run time; a CI failure can be reproduced on any machine        |
 | A filtered manual CI run never replaces the published report                                    | The live report always shows a full run                                                                                           |
 | Never weaken an assertion to make a test pass                                                   | Every failure is reported as either a test problem or a site bug                                                                  |
 
@@ -429,6 +469,8 @@ default in `src/config/env.ts`, and `USER_AGENT=E2EUI-Tests npm run test:api` re
 | UI-02 and UI-09 show ✘                         | Expected: they check known bugs and count as passed ([3.2](#32-ui-tests-testsui-chromium))         |
 | The Allure report shows old runs               | Local results add up; delete `allure-results/` before a run                                        |
 | `npm run allure:open` shows nothing            | Run `npm run allure:generate` first                                                                |
+| A test fails in CI but passes on your machine  | Run it in the CI image: `npm run test:docker -- -g "<test ID>"` ([Docker](#running-in-docker))     |
+| CI lint fails on the Playwright image check    | Playwright was upgraded: set the same version in the `Dockerfile` and `ci.yml` image tags          |
 
 ## 14. AI usage
 

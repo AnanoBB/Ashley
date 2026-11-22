@@ -61,15 +61,21 @@ Update this checklist as parts are completed.
 - dotenv for config, zod for API response schema validation
 - allure-playwright + Allure 3 CLI (Node package, no Java) for reporting, plus Playwright HTML report
 - ESLint (flat config, typescript-eslint with type-aware linting) + Prettier
+- Docker: CI test jobs (`api` and `ui`) run in `mcr.microsoft.com/playwright:v1.65.1-noble`; the
+  `Dockerfile` builds on the same image for local runs (`npm run test:docker`). The tag must match
+  `@playwright/test` in `package-lock.json` (`npm run check:playwright-image`, run in the CI `lint` job):
+  when upgrading Playwright, update both tags.
 - Playwright MCP (`.mcp.json`, pinned version, `--user-agent "E2EUI-Tests-Brands-CI"`) for exploring the app.
   Never used in CI.
 
 ## Project structure
 ```
 .github/workflows/ci.yml      # CI pipeline
+Dockerfile, .dockerignore     # local Docker runs on the CI Playwright image
 allurerc.mjs                  # Allure 3 config (report name, history file)
 scripts/ci-summary.mjs        # pass/fail counts per project for the CI run summary
 scripts/mark-known-bugs.mjs   # marks @known-bug expected failures as failed before allure generate
+scripts/check-playwright-image.mjs # Docker image tags in Dockerfile/ci.yml == locked Playwright version
 docs/exploration.md           # UI exploration findings (locators, flakiness risks, bugs)
 docs/test-plan.md             # test cases and IDs
 docs/api-overview.md          # API notes (params, status codes, limits, response shape)
@@ -171,8 +177,9 @@ tests/
   Manual runs get a group per run and are never cancelled.
 - Publishing to Pages and Allure history: only push to `main` and nightly (`PUBLISH` env), so a
   filtered manual run never replaces the full report.
-- Jobs: `lint` (lint + typecheck) → `test` matrix (`api`, `ui`; fail-fast false; Chromium only
-  for `ui`) → `report` (always after lint passed: merge both projects' `allure-results`, restore
+- Jobs: `lint` (lint + typecheck + Playwright image tag check) → `test` matrix (`api`, `ui`;
+  fail-fast false; both in the Playwright `container:` with `--ipc=host`, Node from the image, no
+  setup-node or browser install, bash as the shell) → `report` (always after lint passed: merge both projects' `allure-results`, restore
   `history.jsonl` from the published report on `main`, generate Allure, write pass/fail/flaky counts
   per project to the run summary with `scripts/ci-summary.mjs`) → `publish-report` (deploy to
   GitHub Pages for push to `main` and nightly, even when tests fail): https://ananobb.github.io/Ashley/
@@ -187,6 +194,9 @@ tests/
   `npm run test:ui` – one project
 - `npx playwright test --grep @smoke` – by tag
 - `npm run test:ui -- --headed --workers=1` – watch UI tests one by one
+- `npm run test:docker` (extra args go to `playwright test`) – run in the CI image; mounts the
+  project, keeps a separate Linux `node_modules` volume, passes `BASE_URL`/`API_URL`/`USER_AGENT`
+  (`.env` isn't in the image)
 - `npm run report:html` – Playwright HTML report
 - `npm run allure:generate` / `npm run allure:open`
 - After any code change: run lint, typecheck and the relevant tests before saying you're done.
