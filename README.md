@@ -82,11 +82,13 @@ you can find it in the reports and run it alone. Tags say what kind of test it i
 | `@api`, `@ui`      | Which layer                                         | 17/17 |
 | `@negative`        | API error handling (bad input, unsupported methods) | 8     |
 | `@cart`, `@header` | UI feature area                                     |       |
+| `@known-bug`       | Checks a known site bug, expected to fail           | 2     |
 
 ### 3.1 API tests (`tests/api/`)
 
 Every API test checks, in this order: **status code → `Content-Type: application/json` → the body
-matches a zod schema** (required fields with the right types), then its own assertions.
+matches a zod schema** (required fields with the right types), then its own assertions. The one
+exception is API-12: the 405 body is plain text, so it checks status → `text/plain` → the text.
 
 **Assignment (`@smoke`)**
 
@@ -106,7 +108,7 @@ matches a zod schema** (required fields with the right types), then its own asse
 | API-03  | Unknown brand → **400** with an error naming the brand                                        |
 | API-04  | Unknown product name → 200 with an empty list                                                 |
 | API-05  | Name without brand → **400** "missed brand values" (brand is required)                        |
-| API-06  | `lang=es` or an invalid `lang=xx` returns the same body as `lang=en` (lang has no effect)     |
+| API-06  | `lang=es`, `fr` or an invalid `xx` returns the same body as `lang=en` (lang has no effect)    |
 | API-07a | Brand filter ignores case: `brand=AWARA` = `brand=awara`                                      |
 | API-07b | Name filter is case-sensitive: an uppercase name finds nothing                                |
 | API-08  | The product found by name matches its entry in the brand list (id, name, title, brand, price) |
@@ -271,12 +273,12 @@ lint ──► test (api) ──┐
      └─► test (ui) ───┴─► report ──► publish-report
 ```
 
-| Job                   | What it does                                                                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lint`                | ESLint, Prettier and TypeScript checks. Tests only start if this passes.                                                                   |
-| `test (api)` / `(ui)` | One job per project, in parallel. Both always finish, even if the other fails. Chromium is installed only for UI.                          |
-| `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky counts to the run's **Summary** tab |
-| `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)               |
+| Job                   | What it does                                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `lint`                | ESLint, Prettier and TypeScript checks. Tests only start if this passes.                                                                               |
+| `test (api)` / `(ui)` | One job per project, in parallel. Both always finish, even if the other fails. Chromium is installed only for UI.                                      |
+| `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky / known bug counts to the run's **Summary** tab |
+| `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)                           |
 
 ### Artifacts
 
@@ -306,7 +308,7 @@ Download from the run page → **Artifacts** (kept 14 days), or `gh run download
 ```
 .github/workflows/ci.yml   CI pipeline (triggers, jobs, artifacts, Pages)
 playwright.config.ts       User-Agent, URLs, projects (api / ui), workers, retries, reporters
-allurerc.mjs               Allure report name and history file
+allurerc.mjs               Allure report name, history file and the known-bug categories
 .env.example               Optional settings (copy to .env)
 
 src/
@@ -316,7 +318,7 @@ src/
   pages/                   Page objects: HomePage, ProductPage, CartPage, MattressesPage
   components/              Shared UI parts: Header (menu), popup handlers
   data/mattresses.ts       The 3 mattresses (routes, test ids) + prices loaded from the catalog API
-  fixtures/                Ready-made objects for tests; specs import `test` and `expect` from here
+  fixtures/                Ready-made objects for tests, plus `knownBug()`; specs import from here
   utils/money.ts           Price formatting ($1,199)
   utils/regexp.ts          Escapes text for use in a RegExp
 
@@ -324,7 +326,7 @@ tests/
   api/products.spec.ts             API-01, 02 (assignment) and API-08 (consistency)
   api/products-filters.spec.ts     API-03 … 07 (filter behaviour)
   api/products-negative.spec.ts    API-09 … 12 (negative cases)
-  api/support.ts                   Shared checks: status → JSON → schema
+  api/support.ts                   Shared checks: status → Content-Type → schema
   ui/home.spec.ts                  UI-01, 02, 03
   ui/cart.spec.ts                  UI-12 … 22 (product page and cart, incl. the assignment flow)
   ui/header-mattresses.spec.ts     UI-05 … 09 (header menu)
@@ -334,7 +336,7 @@ scripts/mark-known-bugs.mjs Marks @known-bug expected failures as failed for All
 docs/
   exploration.md           What was found exploring the site: locators, popups, 28 possible bugs
   test-plan.md             Scope, all test cases with priorities, risks
-  api-overview.md          API notes: response shape, errors
+  api-overview.md          API notes: parameters, status codes, limits, response shape
 ```
 
 ## 9. Adding a test
@@ -358,9 +360,13 @@ docs/
 4. Selectors go in a page object (`src/pages/`), not in the spec. Prefer `getByRole` → `getByLabel` →
    `getByTestId` → `getByText`; no XPath.
 5. **API tests** go through `tests/api/support.ts`: `expectProducts(response)` for success,
-   `expectApiError(response, 400)` for errors.
-6. No fixed sleeps: wait for a condition (`await expect(locator).toBeVisible()`).
-7. Run `npm run lint`, `npm run typecheck` and your test before committing, and add it to
+   `expectApiError(response, 400)` for JSON errors, `expectTextError(response, 405)` for plain-text
+   errors.
+6. **Known site bug:** declare the test with
+   `test.fail('UI-30 …', knownBug(<bug #>, '<what goes wrong>'), async (…) => { … })`. It gets the
+   `@known-bug` tag and a link to the bug list, and shows red under "Known product bugs" in Allure.
+7. No fixed sleeps: wait for a condition (`await expect(locator).toBeVisible()`).
+8. Run `npm run lint`, `npm run typecheck` and your test before committing, and add it to
    `docs/test-plan.md`.
 
 ## 10. Design decisions
@@ -370,7 +376,7 @@ docs/
 | Every API test: status → JSON Content-Type → zod schema → its own assertion                     | A schema failure points at a broken contract; the assignment checks stay short and readable                                       |
 | Checked the real responses before writing schemas                                               | That's how the real `result.data` path and the website typo were found                                                            |
 | When the API behaves unexpectedly, assert what it does and add a `finding` note                 | The behaviour is documented and guarded; a deliberately red test would just be noise                                              |
-| Known site bugs: keep the strict assertion, mark the test `test.fail()` with a `known bug` note | The bug stays visible in the report, and the test tells us when it's fixed                                                        |
+| Known site bugs: keep the strict assertion, mark the test `test.fail()` with a `known bug` note | The bug stays visible (red in Allure) without failing CI, and the test tells us when it's fixed                                   |
 | Expected prices come from the catalog API                                                       | Prices and sales change; the test compares the website with the source of truth                                                   |
 | Popups are closed by a fixture                                                                  | They appear at random times; tests stay about behaviour, and a test can opt out to test a popup itself                            |
 | No fixed sleeps; every wait is a timeout on a specific condition                                | The QA site is slow (the buy box and header menu can take 20 s or more), and waits end as soon as the condition is true           |
@@ -399,13 +405,13 @@ accessibility issues and more).
 
 **API**
 
-| #   | Finding                                                                                                   | Test                         |
-| --- | --------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| 5   | `brand` is required: a name alone gets 400 "missed brand values"                                          | API-05                       |
-| 6   | `lang` has no effect: `es`, `fr` and invalid values return the same body as `en`; `translations` is empty | API-06                       |
-| 7   | Inconsistent case handling: `brand=AWARA` works, an uppercase `name` finds nothing                        | API-07b                      |
-| 8   | Lists are capped at 200 items while `total_count` can be higher (e.g. brand `nectar`: 1025)               | `docs/test-plan.md`          |
-| 9   | The assignment's User-Agent `E2EUI-Tests` is blocked by Cloudflare (403)                                  | [User-Agent](#12-user-agent) |
+| #   | Finding                                                                                                   | Test                           |
+| --- | --------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| 5   | `brand` is required: a name alone gets 400 "missed brand values"                                          | API-05                         |
+| 6   | `lang` has no effect: `es`, `fr` and invalid values return the same body as `en`; `translations` is empty | API-06                         |
+| 7   | Inconsistent case handling: `brand=AWARA` works, an uppercase `name` finds nothing                        | API-07b                        |
+| 8   | Lists are capped at 200 items while `total_count` can be higher (e.g. brand `nectar`: 1025)               | API-07a, API-08 (precondition) |
+| 9   | The assignment's User-Agent `E2EUI-Tests` is blocked by Cloudflare (403)                                  | [User-Agent](#12-user-agent)   |
 
 ## 12. User-Agent
 
