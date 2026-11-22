@@ -17,8 +17,9 @@ BASE_URL=https://qa.awarasleep.com npm run test:docker -- --project=ui   # env v
 
 The project folder is mounted into the container, so code changes need no rebuild and the reports
 land in the usual `allure-results/`, `playwright-report/` and `test-results/`. The container keeps
-its own Linux `node_modules`, separate from yours. `.env` is not copied into the image: pass
-settings as environment variables instead (`BASE_URL`, `API_URL`, `UI_USER_AGENT`, `API_USER_AGENT`).
+its own Linux `node_modules`, separate from yours. `.env` is not copied into the image, but the mounted
+folder includes it, so `npm run test:docker` reads it. Environment variables (`BASE_URL`, `API_URL`,
+`UI_USER_AGENT`, `API_USER_AGENT`) are passed through and override it.
 
 Without npm, the same with plain Docker:
 

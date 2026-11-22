@@ -25,20 +25,18 @@ Deviations (documented in the README):
 - [x] UI: 19 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
   UI-13 (UI-14/15 are its steps); "on /mattress" means the path is `/mattress` or `/mattresses/…`
   (`MATTRESS_URL`). UI-02 (exact path) is a `@known-bug`. UI-25 (404) and UI-26 (stubbed failed
-  add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04, UI-18, UI-19, UI-20
-  (flaky, see README findings 4-5). Planned but not automated: UI-10, 11, 17, 23, 24.
+  add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04 (the fixtures close the
+  popups in every test), UI-18, UI-19, UI-20 (flaky, see README findings 4-5). UI-22 also covers
+  UI-24. Planned but not automated: UI-10, 11, 17, 23.
   **Ask before adding or removing UI cases.**
-- Cart-via-API work for UI-19/20 is in `git stash` ("wip: cart tests via API"), not stable: the cart
-  is chosen by the `authentication` header (decoded `authToken` cookie), and an API write before the
-  page's first `GET /carts/my` can land in a cart the page doesn't use.
 - [x] Allure, [x] CI/CD + artifacts + Pages, [x] README
-- [ ] Final review against the assignment
+- [x] Final review against the assignment (2026-11-23)
 
 Update this checklist as parts are completed.
 
 ## Stack
 Playwright Test + TypeScript (Node 22+, CI on 24), dotenv, zod, allure-playwright + Allure 3 CLI (no Java),
-ESLint (type-aware) + Prettier. CI test jobs and the local `Dockerfile` use
+ESLint (type-aware, `--max-warnings 0`) + Prettier. CI test jobs and the local `Dockerfile` use
 `mcr.microsoft.com/playwright:v<version>-noble`; the tag must match `@playwright/test` in
 `package-lock.json` (`npm run check:playwright-image`). Update both when upgrading Playwright.
 Playwright MCP (`.mcp.json`) is for exploring the app only, never in CI.
@@ -58,7 +56,9 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
   problem or a real bug.
 - Known site bug: keep the strict assertion, use
   `test.fail(title, knownBug(<#>, '<desc>', '<text of the expected error>'), body)`
-  (`src/fixtures/knownBug.ts`). Any other failure is reported as broken by `mark-known-bugs.mjs`.
+  (`src/fixtures/knownBug.ts`). The expected error must be specific to the bug (e.g. the wrong URL
+  it lands on), not just the matcher name. Any other failure is reported as broken by
+  `mark-known-bugs.mjs`, and `--strict` (CI test job) fails the job.
 - Keep assignment tests in their own `describe`, apart from extras.
 
 ### API
@@ -93,14 +93,15 @@ User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `hi
 - Jobs: `lint` → `test` (matrix `api`/`ui` in the Playwright container) → `report` (merged Allure +
   run summary) → `publish-report` (GitHub Pages, only push to `main` and nightly):
   https://ananobb.github.io/Ashley/
-- `retries: 1` on CI (pass-on-retry counted as flaky), 0 locally. 2 workers (3 time out on QA).
+- `retries: 1`, in CI and locally (pass-on-retry counted as flaky). 2 workers (3 time out on QA).
 - After pushing, watch the run (`gh run watch`) and report the result. On a PR from this repo, check
   the `push` run; the `pull_request` run skips jobs on purpose (forks only).
 
 ## Commands
 `npm test` / `test:smoke` / `test:api` / `test:ui` / `test:docker`, `npm run lint` / `typecheck`,
-`npm run allure:generate` / `allure:open`. After any code change, run lint, typecheck and the
-relevant tests before saying you're done.
+`npm run allure:generate` / `allure:open`, `npm run test:scripts` (report-script unit tests).
+After any code change, run lint (no warnings allowed), typecheck and the relevant tests before
+saying you're done.
 
 ## Git
 - Conventional commits, one logical change per commit. Commit and push only when asked.
