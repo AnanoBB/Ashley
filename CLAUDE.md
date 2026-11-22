@@ -151,13 +151,20 @@ tests/
 - `allure-results/`, `allure-report/`, `playwright-report/` and `test-results/` are gitignored.
 
 ## CI/CD (`.github/workflows/ci.yml`)
-- Triggers: push to any branch, pull requests from forks, workflow_dispatch. Concurrency cancels
-  older runs on the same branch.
+- Triggers: push to any branch, pull requests from forks, **nightly** (`schedule`, 03:00 UTC, on
+  `main`), and **manual** `workflow_dispatch` with inputs `project` (all/api/ui) and `grep` (tag or
+  title filter; `--pass-with-no-tests` when set). Manual: Actions tab → CI → Run workflow, or
+  `gh workflow run ci.yml --ref <branch> -f project=ui -f grep=@smoke`. Runs code already on GitHub;
+  uncommitted changes can only run locally.
+- Concurrency: push/PR runs cancel older runs on the same branch; nightly and manual runs have their
+  own group and are never cancelled.
+- Publishing to Pages and Allure history: only push to `main` and nightly (`PUBLISH` env), so a
+  filtered manual run never replaces the full report.
 - Jobs: `lint` (lint + typecheck) → `test` matrix (`api`, `ui`; fail-fast false; Chromium only
   for `ui`) → `report` (always after lint passed: merge both projects' `allure-results`, restore
   `history.jsonl` from the published report on `main`, generate Allure, write pass/fail/flaky counts
   per project to the run summary with `scripts/ci-summary.mjs`) → `publish-report` (deploy to
-  GitHub Pages on `main`, even when tests fail): https://ananobb.github.io/Ashley/
+  GitHub Pages for push to `main` and nightly, even when tests fail): https://ananobb.github.io/Ashley/
 - Artifacts (14-day retention): `allure-results-<project>`, `playwright-report-<project>`,
   `test-results-<project>`, `allure-report`.
 - After pushing, watch the run (`gh run watch`) and report the result.
