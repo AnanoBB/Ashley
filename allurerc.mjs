@@ -10,20 +10,12 @@ export default {
     rules: [
       {
         name: 'Known product bugs',
-        matchers: {
-          statuses: ['failed'],
-          labels: { tag: 'known-bug' },
-          message: /^Known bug \(expected failure\)/,
-        },
+        matchers: { statuses: ['failed'], labels: { knownBug: 'expected-failure' } },
         expand: true,
       },
       {
         name: 'Known bug no longer reproduces',
-        matchers: {
-          statuses: ['failed'],
-          labels: { tag: 'known-bug' },
-          message: /^Known bug no longer reproduces/,
-        },
+        matchers: { statuses: ['failed'], labels: { knownBug: 'no-longer-reproduces' } },
         expand: true,
       },
       { name: 'Product errors', matchers: { statuses: ['failed'] } },

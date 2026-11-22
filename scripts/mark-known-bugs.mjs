@@ -3,6 +3,8 @@
 // hides the bug in the report. This marks those results "failed" with a "Known bug" prefix so they
 // show up red under the "Known product bugs" category (allurerc.mjs). A known-bug test that passes
 // is already "failed" (unexpected pass); it gets a message saying the bug may be fixed.
+// Each marked result gets a `knownBug` label (`expected-failure` or `no-longer-reproduces`), which
+// the Allure categories and scripts/ci-summary.mjs match on.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -17,18 +19,22 @@ let marked = 0;
 for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json'))) {
   const path = join(dir, file);
   const result = JSON.parse(readFileSync(path, 'utf8'));
-  const isKnownBug = result.labels?.some(
+  result.labels ??= [];
+  const isKnownBug = result.labels.some(
     (label) => label.name === 'tag' && label.value.replace(/^@/, '') === 'known-bug',
   );
+  const alreadyMarked = result.labels.some((label) => label.name === 'knownBug');
   const message = result.statusDetails?.message ?? '';
-  if (!isKnownBug || message.startsWith(KNOWN_BUG_PREFIX) || message === NO_LONGER_REPRODUCES) {
+  if (!isKnownBug || alreadyMarked) {
     continue;
   }
   if (result.status === 'passed' && message) {
     result.status = 'failed';
     result.statusDetails.message = KNOWN_BUG_PREFIX + message;
+    result.labels.push({ name: 'knownBug', value: 'expected-failure' });
   } else if (result.status === 'failed' && !message) {
     result.statusDetails = { ...result.statusDetails, message: NO_LONGER_REPRODUCES };
+    result.labels.push({ name: 'knownBug', value: 'no-longer-reproduces' });
   } else {
     continue;
   }

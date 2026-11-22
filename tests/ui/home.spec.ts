@@ -1,4 +1,4 @@
-import { test, expect } from '../../src/fixtures';
+import { test, expect, knownBug } from '../../src/fixtures';
 
 test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
   test('UI-01 home page opens', async ({ page, homePage }) => {
@@ -34,26 +34,10 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
 });
 
 test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
-  test(
+  test.fail(
     'UI-02 hero "Shop Mattress" opens exactly /mattress',
-    {
-      tag: '@known-bug',
-      annotation: [
-        {
-          type: 'known bug',
-          description:
-            'docs/exploration.md #1: hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
-        },
-        {
-          type: 'issue',
-          description:
-            'https://github.com/AnanoBB/Ashley/blob/main/docs/exploration.md#possible-bugs',
-        },
-      ],
-    },
+    knownBug(1, 'hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress'),
     async ({ page, homePage }) => {
-      test.fail();
-
       await test.step('Open the home page', () => homePage.goto());
 
       await test.step('Click "Shop Mattress" in the hero banner', () =>
