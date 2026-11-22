@@ -1,0 +1,13 @@
+node_modules/
+.git/
+.env
+.claude/
+.playwright-mcp/
+test-results/
+playwright-report/
+blob-report/
+allure-results/
+allure-report/
+history.jsonl
+HANDOFF.md
+.DS_Store
