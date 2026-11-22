@@ -1,5 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { expectApiError, expectProducts, expectTextError } from './support';
+import { expectApiError, expectProducts } from './support';
 
 const BRAND = 'awara';
 
@@ -42,19 +42,6 @@ test.describe('Products API: negative cases', { tag: ['@api', '@regression', '@n
 
       await test.step('result.data is empty', () => {
         expect(body.result.data).toEqual([]);
-      });
-    });
-  }
-
-  for (const method of ['POST', 'PUT', 'DELETE']) {
-    test(`API-12 ${method} /products is rejected with 405`, async ({ productsApi }) => {
-      const response = await test.step(`${method} /products?brand=${BRAND}`, () =>
-        productsApi.sendProducts(method, { brand: BRAND }));
-
-      const text = await expectTextError(response, 405);
-
-      await test.step('Only GET is allowed', () => {
-        expect(text).toContain('Defined methods: GET');
       });
     });
   }

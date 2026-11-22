@@ -17,9 +17,4 @@ export class ProductsApi extends BaseApi {
   getProducts(query: ProductsQuery): Promise<APIResponse> {
     return this.get('/products', toParams(query));
   }
-
-  /** `/products` with another HTTP method (the API only defines GET). */
-  sendProducts(method: string, query: ProductsQuery): Promise<APIResponse> {
-    return this.send(method, '/products', toParams(query));
-  }
 }

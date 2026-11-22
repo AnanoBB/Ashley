@@ -72,23 +72,23 @@ Optional: `cp .env.example .env` to override the addresses or the User-Agent
 
 ## 3. What is tested
 
-**34 tests: 17 API + 17 UI.** Each test has an ID (e.g. `API-01`, `UI-13`) at the start of its name, so
+**31 tests: 14 API + 17 UI.** Each test has an ID (e.g. `API-01`, `UI-13`) at the start of its name, so
 you can find it in the reports and run it alone. Tags say what kind of test it is:
 
-| Tag                | Meaning                                             | Count |
-| ------------------ | --------------------------------------------------- | ----- |
-| `@smoke`           | The assignment itself                               | 5     |
-| `@regression`      | Everything beyond the assignment                    | 29    |
-| `@api`, `@ui`      | Which layer                                         | 17/17 |
-| `@negative`        | API error handling (bad input, unsupported methods) | 8     |
-| `@cart`, `@header` | UI feature area                                     |       |
-| `@known-bug`       | Checks a known site bug, expected to fail           | 2     |
+| Tag                | Meaning                                   | Count |
+| ------------------ | ----------------------------------------- | ----- |
+| `@smoke`           | The assignment itself                     | 5     |
+| `@regression`      | Everything beyond the assignment          | 26    |
+| `@api`, `@ui`      | Which layer                               | 14/17 |
+| `@negative`        | API error handling (bad input)            | 5     |
+| `@cart`, `@header` | UI feature area                           |       |
+| `@known-bug`       | Checks a known site bug, expected to fail | 2     |
 
 ### 3.1 API tests (`tests/api/`)
 
 Every API test checks, in this order: **status code → `Content-Type: application/json` → the body
-matches a zod schema** (required fields with the right types), then its own assertions. The one
-exception is API-12: the 405 body is plain text, so it checks status → `text/plain` → the text.
+matches a zod schema** (required fields with the right types), then its own assertions. Only
+`GET` is tested: the API defines no other method for `/products`.
 
 **Assignment (`@smoke`)**
 
@@ -120,7 +120,6 @@ exception is API-12: the 405 body is plain text, so it checks status → `text/p
 | API-09 | No query parameters → 400                                                                   |
 | API-10 | Empty brand (`brand=`) → 400                                                                |
 | API-11 | A name with SQL-like characters, 3000 characters, or an empty value → 200, empty, never 5xx |
-| API-12 | `POST`, `PUT`, `DELETE /products` → 405 "Defined methods: GET"                              |
 
 Where the API behaves differently than you might expect (API-05, 06, 07b), the test asserts what the
 API **actually** does and carries a `finding` note, visible in the report. See
@@ -201,7 +200,7 @@ store's catalog API and compare the website against them.
 
 | Command                                     | What it runs                                            |
 | ------------------------------------------- | ------------------------------------------------------- |
-| `npm test`                                  | Everything (34 tests, ~3 min)                           |
+| `npm test`                                  | Everything (31 tests, ~3 min)                           |
 | `npm run test:smoke`                        | The assignment only (5 tests)                           |
 | `npm run test:api`                          | API tests only (~5 s)                                   |
 | `npm run test:ui`                           | UI tests only                                           |
@@ -252,7 +251,7 @@ The pipeline lives in `.github/workflows/ci.yml`.
 | Trigger                     | What runs                                    | Publishes the report |
 | --------------------------- | -------------------------------------------- | -------------------- |
 | Push to any branch          | All tests                                    | Only on `main`       |
-| **Nightly**, 03:00 UTC      | **Full regression**: all 34 tests, on `main` | Yes                  |
+| **Nightly**, 03:00 UTC      | **Full regression**: all 31 tests, on `main` | Yes                  |
 | **Manual** ("Run workflow") | All tests, or the project/filter you choose  | No                   |
 | Pull request from a fork    | All tests                                    | No                   |
 
@@ -325,7 +324,7 @@ src/
 tests/
   api/products.spec.ts             API-01, 02 (assignment) and API-08 (consistency)
   api/products-filters.spec.ts     API-03 … 07 (filter behaviour)
-  api/products-negative.spec.ts    API-09 … 12 (negative cases)
+  api/products-negative.spec.ts    API-09 … 11 (negative cases)
   api/support.ts                   Shared checks: status → Content-Type → schema
   ui/home.spec.ts                  UI-01, 02, 03
   ui/cart.spec.ts                  UI-12 … 22 (product page and cart, incl. the assignment flow)
@@ -360,8 +359,7 @@ docs/
 4. Selectors go in a page object (`src/pages/`), not in the spec. Prefer `getByRole` → `getByLabel` →
    `getByTestId` → `getByText`; no XPath.
 5. **API tests** go through `tests/api/support.ts`: `expectProducts(response)` for success,
-   `expectApiError(response, 400)` for JSON errors, `expectTextError(response, 405)` for plain-text
-   errors.
+   `expectApiError(response, 400)` for errors.
 6. **Known site bug:** declare the test with
    `test.fail('UI-30 …', knownBug(<bug #>, '<what goes wrong>'), async (…) => { … })`. It gets the
    `@known-bug` tag and a link to the bug list, and shows red under "Known product bugs" in Allure.

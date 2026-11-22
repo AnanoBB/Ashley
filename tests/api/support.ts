@@ -6,14 +6,10 @@ import {
   type ProductsResponse,
 } from '../../src/api/schemas/products.schema';
 
-async function expectStatus(response: APIResponse, status: number): Promise<void> {
+async function expectJson(response: APIResponse, status: number): Promise<unknown> {
   await test.step(`Response status is ${status}`, () => {
     expect(response.status(), `Unexpected status for ${response.url()}`).toBe(status);
   });
-}
-
-async function expectJson(response: APIResponse, status: number): Promise<unknown> {
-  await expectStatus(response, status);
 
   await test.step('Content-Type is application/json', () => {
     expect(response.headers()['content-type']).toContain('application/json');
@@ -26,17 +22,6 @@ async function expectJson(response: APIResponse, status: number): Promise<unknow
 export async function expectProducts(response: APIResponse): Promise<ProductsResponse> {
   const json = await expectJson(response, 200);
   return test.step('Body matches the products schema', () => ProductsResponseSchema.parse(json));
-}
-
-/** Expected status → plain-text body (e.g. 405 from the web server). Returns the body text. */
-export async function expectTextError(response: APIResponse, status: number): Promise<string> {
-  await expectStatus(response, status);
-
-  await test.step('Content-Type is text/plain', () => {
-    expect(response.headers()['content-type']).toContain('text/plain');
-  });
-
-  return response.text();
 }
 
 /** Expected status → JSON → error schema (`{ status: "error", error }`). */
