@@ -46,12 +46,23 @@ test.describe('Products API: consistency', { tag: ['@api', '@regression'] }, () 
   test('API-08 the product found by name matches its entry in the brand list', async ({
     productsApi,
   }) => {
-    const byName = await test.step(`GET /products?name=${PRODUCT_NAME}&brand=${BRAND}`, async () =>
-      expectProducts(
-        await productsApi.getProducts({ name: PRODUCT_NAME, lang: 'en', brand: BRAND }),
-      ));
+    const byName =
+      await test.step(`GET /products?name=${PRODUCT_NAME}&lang=en&brand=${BRAND}`, async () =>
+        expectProducts(
+          await productsApi.getProducts({ name: PRODUCT_NAME, lang: 'en', brand: BRAND }),
+        ));
+
     const byBrand = await test.step(`GET /products?brand=${BRAND}`, async () =>
       expectProducts(await productsApi.getProducts({ brand: BRAND })));
+
+    await test.step('The name query found exactly one product', () => {
+      expect(byName.result.data).toHaveLength(1);
+    });
+
+    // Lists are capped at 200 items; a truncated list may not contain the product.
+    await test.step('The brand list is complete (not truncated)', () => {
+      expect(byBrand.result.data).toHaveLength(byBrand.result.total_count);
+    });
 
     await test.step('The brand list has the same product with the same id, name, title and price', () => {
       const [product] = byName.result.data;

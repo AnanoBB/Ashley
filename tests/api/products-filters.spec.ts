@@ -63,7 +63,7 @@ test.describe('Products API: filter behaviour', { tag: ['@api', '@regression'] }
           await productsApi.getProducts({ name: PRODUCT_NAME, lang: 'en', brand: BRAND }),
         ));
 
-      for (const lang of ['es', 'xx']) {
+      for (const lang of ['es', 'fr', 'xx']) {
         await test.step(`lang=${lang} returns the same product as lang=en`, async () => {
           const other = await expectProducts(
             await productsApi.getProducts({ name: PRODUCT_NAME, lang, brand: BRAND }),
@@ -77,8 +77,15 @@ test.describe('Products API: filter behaviour', { tag: ['@api', '@regression'] }
   test('API-07a the brand filter is case-insensitive', async ({ productsApi }) => {
     const lower = await test.step('GET /products?brand=awara', async () =>
       expectProducts(await productsApi.getProducts({ brand: BRAND })));
+
     const upper = await test.step('GET /products?brand=AWARA', async () =>
       expectProducts(await productsApi.getProducts({ brand: BRAND.toUpperCase() })));
+
+    // Lists are capped at 200 items; two truncated lists may hold different products.
+    await test.step('Both lists are complete (not truncated)', () => {
+      expect(lower.result.data).toHaveLength(lower.result.total_count);
+      expect(upper.result.data).toHaveLength(upper.result.total_count);
+    });
 
     await test.step('Both return the same products', () => {
       const ids = (body: typeof lower) => body.result.data.map((product) => product.id).sort();
