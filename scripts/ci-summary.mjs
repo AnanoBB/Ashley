@@ -1,6 +1,6 @@
 // Prints a Markdown summary of allure-results/ (pass/fail counts per Playwright project) for
 // $GITHUB_STEP_SUMMARY. With retries there is one result per attempt: the last attempt counts,
-// and a test that passed after a failed attempt is reported as flaky.
+// and a test that passed after a failed or broken attempt is reported as flaky.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -23,7 +23,9 @@ for (const attempts of attemptsByTest.values()) {
   attempts.sort((a, b) => a.stop - b.stop);
   const last = attempts.at(-1);
   const project = last.labels.find((label) => label.name === 'parentSuite')?.value ?? 'unknown';
-  const flaky = last.status === 'passed' && attempts.some((attempt) => attempt.status !== 'passed');
+  const flaky =
+    last.status === 'passed' &&
+    attempts.some((attempt) => attempt.status === 'failed' || attempt.status === 'broken');
   const outcome = flaky ? 'flaky' : last.status;
   const counts = byProject.get(project) ?? Object.fromEntries(COLUMNS.map((column) => [column, 0]));
   counts[outcome] = (counts[outcome] ?? 0) + 1;
