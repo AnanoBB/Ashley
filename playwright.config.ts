@@ -1,5 +1,5 @@
 import { defineConfig } from '@playwright/test';
-import { env, USER_AGENT } from './src/config/env';
+import { env } from './src/config/env';
 
 export default defineConfig({
   testDir: './tests',
@@ -13,10 +13,22 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { open: 'never' }],
-    ['allure-playwright', { resultsDir: 'allure-results' }],
+    [
+      'allure-playwright',
+      {
+        resultsDir: 'allure-results',
+        environmentInfo: {
+          BASE_URL: env.baseUrl,
+          API_URL: env.apiUrl,
+          UI_USER_AGENT: env.uiUserAgent,
+          API_USER_AGENT: env.apiUserAgent,
+          Browser: 'Chromium (desktop, 1440x900)',
+          Node: process.version,
+        },
+      },
+    ],
   ],
   use: {
-    userAgent: USER_AGENT,
     trace: 'retain-on-failure',
   },
   projects: [
@@ -25,6 +37,7 @@ export default defineConfig({
       testDir: './tests/api',
       use: {
         baseURL: env.apiUrl,
+        userAgent: env.apiUserAgent,
       },
     },
     {
@@ -34,6 +47,7 @@ export default defineConfig({
       expect: { timeout: 15_000 },
       use: {
         baseURL: env.baseUrl,
+        userAgent: env.uiUserAgent,
         browserName: 'chromium',
         viewport: { width: 1440, height: 900 },
         screenshot: 'only-on-failure',
