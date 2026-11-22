@@ -5,6 +5,8 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * ~20 s on the shared QA env; the menu reports open (aria-expanded) while the panel is still empty.
  */
 const MENU_CONTENT_TIMEOUT = 45_000;
+/** How long one menu click may take to change the URL (the next page's data can take ~20 s). */
+const NAVIGATION_TIMEOUT = 20_000;
 
 export class Header {
   readonly logo: Locator;
@@ -49,13 +51,29 @@ export class Header {
     return this.page.getByTestId(testId);
   }
 
-  /** Hover menus can close between opening and clicking; retry until the click navigates. */
   async clickMattressMenuCard(testId: string): Promise<void> {
+    await this.clickInMattressesMenu(this.menuCard(testId));
+  }
+
+  async clickShopAllMattresses(): Promise<void> {
+    await this.clickInMattressesMenu(this.shopAllMattresses);
+  }
+
+  /**
+   * Clicks a link in the mattresses menu and waits for the URL change (navigation event). The app
+   * changes the URL only after the next page's data (`?_rsc`) arrives, which took up to ~20 s on
+   * the QA env, so each click gets that long; clicking again sooner restarts the navigation. The
+   * menu can also close before the click, or a click can be lost, so the whole thing is retried.
+   */
+  private async clickInMattressesMenu(target: Locator): Promise<void> {
     const startUrl = this.page.url();
     await expect(async () => {
       await this.openMattressesMenu();
-      await this.menuCard(testId).click({ timeout: 5_000 });
-      await expect(this.page).not.toHaveURL(startUrl, { timeout: 5_000 });
-    }).toPass({ timeout: 45_000 });
+      await target.click({ timeout: 5_000 });
+      await this.page.waitForURL((url) => url.href !== startUrl, {
+        waitUntil: 'commit',
+        timeout: NAVIGATION_TIMEOUT,
+      });
+    }).toPass({ timeout: 60_000 });
   }
 }
