@@ -64,11 +64,25 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Check the Playwright image matches the installed version
+        run: npm run check:playwright-image
+
   test:
     name: test (${{ matrix.project }})
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # API and UI tests both run in the official Playwright image, the same one the Dockerfile
+    # uses locally: Node, Chromium and its system libraries are already inside, so nothing is
+    # installed at run time. The tag must match @playwright/test (checked in the lint job).
+    # --ipc=host: Chromium needs more shared memory than Docker's 64 MB default.
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
+      options: --ipc=host
+    # Steps in a container default to sh; keep bash, as on the runner.
+    defaults:
+      run:
+        shell: bash
     strategy:
       # Let both projects finish so one failing project doesn't hide the other's results.
       fail-fast: false
@@ -78,17 +92,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 20
-          cache: npm
-
+      # Node comes from the image (no setup-node), so CI and local Docker runs use the same one.
       - name: Install dependencies
         run: npm ci
-
-      - name: Install Playwright Chromium
-        if: matrix.project == 'ui'
-        run: npx playwright install --with-deps chromium
 
       - name: Run ${{ matrix.project }} tests
         env:
