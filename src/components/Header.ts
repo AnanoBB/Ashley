@@ -13,6 +13,7 @@ export class Header {
   readonly cartIcon: Locator;
   readonly mattressesLink: Locator;
   readonly shopAllMattresses: Locator;
+  private readonly mattressesToggle: Locator;
 
   constructor(private readonly page: Page) {
     this.logo = page.getByTestId('desktop_logo');
@@ -23,6 +24,9 @@ export class Header {
       .getByTestId('menu_dropdown_mattresses')
       .getByRole('link', { name: 'Mattresses', exact: true });
     this.shopAllMattresses = page.getByTestId('cta_btn_shop_all_mattresses');
+    this.mattressesToggle = page
+      .getByTestId('menu_dropdown_mattresses')
+      .getByRole('button', { name: /^Expand Mattresses/ });
   }
 
   /**
@@ -39,12 +43,6 @@ export class Header {
       });
     }).toPass({ timeout: 30_000 });
     await expect(this.shopAllMattresses).toBeVisible({ timeout: MENU_CONTENT_TIMEOUT });
-  }
-
-  private get mattressesToggle(): Locator {
-    return this.page
-      .getByTestId('menu_dropdown_mattresses')
-      .getByRole('button', { name: /^Expand Mattresses/ });
   }
 
   menuCard(testId: string): Locator {

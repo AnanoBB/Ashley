@@ -6,6 +6,9 @@ import {
   type ProductsResponse,
 } from '../../src/api/schemas/products.schema';
 
+export const BRAND = 'awara';
+export const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
+
 async function expectJson(response: APIResponse, status: number): Promise<unknown> {
   await test.step(`Response status is ${status}`, () => {
     expect(response.status(), `Unexpected status for ${response.url()}`).toBe(status);

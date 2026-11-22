@@ -28,14 +28,10 @@ export interface MattressSize {
   priceCents: number;
 }
 
-export interface Mattress {
-  key: MattressKey;
-  apiName: string;
-  path: string;
-  menuCardTestId: string;
+export type Mattress = (typeof MATTRESSES)[MattressKey] & {
   title: string;
   sizes: MattressSize[];
-}
+};
 
 export type MattressCatalog = Record<MattressKey, Mattress>;
 
@@ -45,7 +41,6 @@ function toMattress(key: MattressKey, product: CatalogProduct): Mattress {
     throw new Error(`Catalog product "${product.name}" has no Size property`);
   }
   return {
-    key,
     ...MATTRESSES[key],
     title: product.title,
     sizes: sizeProperty.options.map((option) => ({
