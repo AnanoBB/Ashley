@@ -50,6 +50,11 @@ test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
       await test.step('Click "Shop Mattress" in the hero banner', () =>
         homePage.heroShopMattress.click());
 
+      // Precondition, not the check: wait for the click to navigate at all. QA can take ~20 s,
+      // longer than the assertion timeout, and a check that ends on "/" isn't the known bug.
+      await test.step('Wait for the page to leave /', () =>
+        page.waitForURL((url) => url.pathname !== '/', { waitUntil: 'commit', timeout: 30_000 }));
+
       await test.step('Path is exactly /mattress', async () => {
         await expect(page).toHaveURL('/mattress');
       });
