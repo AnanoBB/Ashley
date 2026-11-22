@@ -10,7 +10,8 @@
   3. Add the mattress to the cart → check the mattress has been added to the cart.
 
 > The assignment text says `qa.awaraslep.com`, which doesn't resolve. The real host is
-> `qa.awarasleep.com`.
+> `qa.awarasleep.com`. Cloudflare blocks the assignment's User-Agent `E2EUI-Tests` on the API, so
+> all tests use **`E2EUI-Tests-Brands-CI`** (since 2026-11-22), which gets 200 JSON.
 
 ### 2. API test
 - Base URL: https://api.qa-env.residenthome.com
@@ -26,9 +27,9 @@
 4. CI/CD with GitHub Actions: run tests on each commit; upload test artifacts (plus).
 
 ## Status
-- [x] Part 2: API tests. 2 tests in `tests/api/products.spec.ts`, **quarantined**: Cloudflare
-  answers every non-browser request (Playwright `request`, curl, http or https) with 403 before it
-  reaches the API. Run them with `RUN_QUARANTINED=true`; lift the quarantine only once they pass.
+- [x] Part 2: API tests. 2 tests in `tests/api/products.spec.ts`, passing. They were quarantined
+  while Cloudflare returned 403 for `E2EUI-Tests`; the quarantine was lifted after switching to
+  `E2EUI-Tests-Brands-CI`.
 - [x] Part 1: UI tests (explored first → `docs/exploration.md`). 21 tests in `tests/ui/`, passing
   locally and in CI. The assignment flow is the `@smoke` set (UI-01, UI-02, UI-03, UI-13/14/15);
   the `@regression` extras are under review. Ask before adding or removing UI cases. UI-10, UI-11
@@ -45,7 +46,8 @@ Update this checklist as parts are completed.
 - dotenv for config, zod for API response schema validation
 - allure-playwright + Allure 3 CLI (Node package, no Java) for reporting, plus Playwright HTML report
 - ESLint (flat config, typescript-eslint with type-aware linting) + Prettier
-- Playwright MCP (with `--user-agent "E2EUI-Tests"`) for exploring the app. Never used in CI.
+- Playwright MCP (`.mcp.json`, `--user-agent "E2EUI-Tests-Brands-CI"`) for exploring the app.
+  Never used in CI.
 
 ## Project structure
 ```
@@ -69,7 +71,8 @@ tests/
 
 ## Configuration
 - `playwright.config.ts`:
-  - `use.userAgent: 'E2EUI-Tests'` set globally (applies to the browser and API request context).
+  - `use.userAgent: USER_AGENT` (`E2EUI-Tests-Brands-CI`) set globally (applies to the browser and
+    API request context).
   - Projects: `api` (testDir `tests/api`, baseURL = API_URL) and `ui` (testDir `tests/ui`,
     baseURL = BASE_URL, Chromium, 1440×900, 90 s test timeout, 15 s expect timeout).
   - `fullyParallel`, 3 workers locally / 2 on CI (the shared QA site slows down with more).
@@ -77,8 +80,8 @@ tests/
   - `retries: 2` on CI, 0 locally. `forbidOnly` on CI.
   - screenshot `only-on-failure`, video `retain-on-failure`, trace `retain-on-failure`.
 - Env vars (`.env`, optional): `BASE_URL` (default https://qa.awarasleep.com), `API_URL` (default
-  https://api.qa-env.residenthome.com), `RUN_QUARANTINED` (default false). `.env.example` is
-  committed and kept in sync; `.env` is not.
+  https://api.qa-env.residenthome.com), `USER_AGENT` (default `E2EUI-Tests-Brands-CI`).
+  `.env.example` is committed and kept in sync; `.env` is not.
 
 ## Conventions
 
@@ -86,7 +89,8 @@ tests/
 - Specs import `test` and `expect` from `src/fixtures`, never directly from `@playwright/test`.
 - Use `test.step()` for each assignment step so they show up in the Allure and HTML reports.
 - Tags: `@api` / `@ui` (layer), `@smoke` / `@regression` (depth), `@cart` / `@header` (feature),
-  `@quarantine` (skipped by default via `test.fixme` with the reason).
+  `@quarantine` (a test blocked by the environment: add the tag and `test.fixme` with the reason;
+  none right now).
 - Tests are independent and can run in parallel.
 - Every promise must be awaited (`@typescript-eslint/no-floating-promises` is on).
 - No hard waits (`waitForTimeout`), no secrets in code, no commented-out code.
@@ -139,7 +143,7 @@ tests/
 - `npm ci` / `npx playwright install --with-deps chromium`
 - `npm run lint` (ESLint + Prettier check) / `npm run lint:fix` / `npm run typecheck`
 - `npm test` – all tests; `npm run test:api` / `npm run test:ui` – one project
-- `npx playwright test --grep @smoke` – by tag; `RUN_QUARANTINED=true npm test` – include quarantined
+- `npx playwright test --grep @smoke` – by tag
 - `npm run test:ui -- --headed --workers=1` – watch UI tests one by one
 - `npm run report:html` – Playwright HTML report
 - `npm run allure:generate` / `npm run allure:open`
@@ -153,8 +157,8 @@ tests/
 ## README must cover
 CI badge + live Allure link, overview, tech stack, prerequisites, install, run commands
 (all / API / UI / headed / single test / tag), reports, CI/CD and where to find artifacts,
-structure + design decisions, assumptions and findings (actual `data` path, bugs, Cloudflare 403),
-AI usage (short and honest). Every command in it must work in a clean clone.
+structure + design decisions, assumptions and findings (actual `data` path, bugs, Cloudflare and
+the User-Agent), AI usage (short and honest). Every command in it must work in a clean clone.
 Still missing: CI badge, design decisions, AI usage, headed / single-test commands.
 
 ## Planned (not built yet)

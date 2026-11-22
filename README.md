@@ -7,7 +7,8 @@ and **GitHub Actions** CI.
 
 ## What is tested
 
-API base URL: `https://api.qa-env.residenthome.com`. All requests send the User-Agent `E2EUI-Tests`.
+API base URL: `https://api.qa-env.residenthome.com`. All requests (API and browser) send the User-Agent
+`E2EUI-Tests-Brands-CI`; override it with `USER_AGENT`.
 
 | #   | Request                                                               | Assertions                                                  |
 | --- | --------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -19,8 +20,8 @@ API base URL: `https://api.qa-env.residenthome.com`. All requests send the User-
 > a string next to `result`. The tests assert `status === "ok"` (in the schema) and check
 > `result.data`.
 
-> **Quarantined:** both API tests are skipped by default because Cloudflare blocks them. See
-> [Known environment issue](#known-environment-issue).
+> **User-Agent:** the assignment asks for `E2EUI-Tests`, but Cloudflare blocks it. The tests use
+> `E2EUI-Tests-Brands-CI`, which Cloudflare lets through. See [Cloudflare and the User-Agent](#cloudflare-and-the-user-agent).
 
 ## Prerequisites
 
@@ -45,7 +46,6 @@ cp .env.example .env   # optional: override API_URL / BASE_URL
 | `npx playwright test --grep @ui`    | Run tests tagged `@ui`          |
 | `npx playwright test --grep @smoke` | Run `@smoke` tests (API and UI) |
 | `npm run test:ui -- --grep @smoke`  | Run only the UI `@smoke` tests  |
-| `RUN_QUARANTINED=true npm test`     | Also run `@quarantine` tests    |
 | `npm run lint`                      | ESLint + Prettier check         |
 | `npm run typecheck`                 | TypeScript type check           |
 
@@ -82,14 +82,13 @@ tests/
   api/            API specs
 ```
 
-## Known environment issue
+## Cloudflare and the User-Agent
 
-As of 2026-11-22, Cloudflare in front of `api.qa-env.residenthome.com` returns **403 (HTML block
-page)** to non-browser clients (curl, Playwright's request context), over http and https, whatever
-the User-Agent is. A browser on the same network gets JSON. The tests then fail on the status-200
-check. That is an environment/WAF block, not a test defect. It is fixed by allowing the
-`E2EUI-Tests` User-Agent (or the runner IPs) in Cloudflare.
+Cloudflare in front of `api.qa-env.residenthome.com` answers non-browser clients (curl, Playwright's
+request context) with **403 (HTML block page)**, over http and https. With the assignment's
+User-Agent `E2EUI-Tests` both API tests failed on the status-200 check, so they were quarantined.
 
-Until then, both API tests are tagged `@quarantine` and skipped (`test.fixme` with the reason), so
-CI stays green and the reports show them as skipped. The assertions are unchanged. To check whether
-the block is still there, run them with `RUN_QUARANTINED=true npm run test:api`.
+On 2026-11-22 the tests switched to the User-Agent **`E2EUI-Tests-Brands-CI`**, which Cloudflare
+lets through. With it both
+endpoints return 200 JSON, and both API tests pass with their assertions unchanged. It is now the
+default User-Agent for all tests (`src/config/env.ts`), and the quarantine is lifted.

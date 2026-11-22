@@ -13,12 +13,13 @@
 ## Auth method
 
 - **No authentication.** No API key, token or cookie is needed. A plain browser `GET` returns JSON.
-- **Required header (by the assignment):** `User-Agent: E2EUI-Tests`, set globally in
-  `playwright.config.ts`.
+- **Required header:** `User-Agent: E2EUI-Tests-Brands-CI` (since
+  2026-11-22), set globally in `playwright.config.ts` from `src/config/env.ts`. The assignment's
+  `E2EUI-Tests` is still blocked.
 - **Cloudflare WAF in front of the API.** Non-browser clients (curl, Playwright's request context)
   get a **403 HTML block page**, whatever the User-Agent is (tested with `E2EUI-Tests`, no UA, and a
   Chrome UA). A browser on the same network gets through. Getting the tests through needs a WAF rule
-  on the owner's side (for example, allow UA `E2EUI-Tests`).
+  on the owner's side; it lets through UA `E2EUI-Tests-Brands-CI` (200 JSON on both endpoints).
 
 ## Endpoints
 
