@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { defineConfig } from '@playwright/test';
 import { env, USER_AGENT } from './src/config/env';
 

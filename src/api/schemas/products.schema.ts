@@ -57,5 +57,4 @@ export const ProductsResponseSchema = z
   })
   .passthrough();
 
-export type Product = z.infer<typeof ProductSchema>;
 export type ProductsResponse = z.infer<typeof ProductsResponseSchema>;

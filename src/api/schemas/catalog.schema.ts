@@ -42,4 +42,3 @@ export const CatalogResponseSchema = z
   .passthrough();
 
 export type CatalogProduct = z.infer<typeof CatalogProductSchema>;
-export type CatalogResponse = z.infer<typeof CatalogResponseSchema>;
