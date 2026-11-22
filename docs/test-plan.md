@@ -1,6 +1,6 @@
 # Test plan: Awara QA home assignment
 
-> Written 2026-11-21, updated 2026-11-22 to match what is automated. Based on the assignment in
+> Written 2026-11-21, updated 2026-11-23 to match what is automated. Based on the assignment in
 > `CLAUDE.md`, the API notes in `docs/api-overview.md` and the UI exploration in
 > `docs/exploration.md` (bug numbers like **#1** refer to that file).
 
@@ -167,8 +167,8 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 ## 7. Entry and exit criteria
 
 - **Entry:** the QA environment is reachable, and the API is reachable for scripted clients (met with `E2EUI-Tests-Brands-CI`, see §6).
-- **Exit:** every P1 case is automated and either passing or marked as a known defect with evidence,
-  lint and the type check pass, CI is green on `main`, and the Allure report is generated and uploaded.
+- **Exit:** every P1 case is automated (or explicitly cut, see §5) and either passing or marked as
+  a known defect with evidence, lint and the type check pass, CI is green on `main`, and the Allure report is generated and uploaded.
 
 ## 8. Deliverables
 
