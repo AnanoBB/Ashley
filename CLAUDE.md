@@ -52,6 +52,8 @@ Update this checklist as parts are completed.
 ## Project structure
 ```
 .github/workflows/ci.yml      # CI pipeline
+allurerc.mjs                  # Allure 3 config (report name, history file)
+scripts/ci-summary.mjs        # pass/fail counts per project for the CI run summary
 docs/exploration.md           # UI exploration findings (locators, flakiness risks, bugs)
 docs/test-plan.md             # test cases and IDs
 docs/api-overview.md          # API notes (response shape, Cloudflare block)
@@ -125,18 +127,21 @@ tests/
 - Use `docs/exploration.md` as the source of truth for locators and flakiness risks.
 
 ## Reporting
-- `npm run allure:generate` → `allure-report/`; `npm run allure:open`.
+- `npm run allure:generate` → `allure-report/`; `npm run allure:open`. Config in `allurerc.mjs`.
+- Allure history lives in `history.jsonl` (git-ignored). In CI it's kept with the published report.
 - On UI failure: screenshot, video and trace attached.
 - `allure-results/`, `allure-report/`, `playwright-report/` and `test-results/` are gitignored.
 
 ## CI/CD (`.github/workflows/ci.yml`)
 - Triggers: push to any branch, pull requests from forks, workflow_dispatch. Concurrency cancels
   older runs on the same branch.
-- Job `tests`: lint → typecheck → install Chromium → `npm test` (both projects in one run, so there
-  is one HTML report) → generate Allure. Job `publish-report`: deploys Allure to GitHub Pages on
-  `main`, even when tests fail, and links it in the run summary:
-  https://ananobb.github.io/Ashley/
-- Artifacts (14-day retention): `allure-report`, `playwright-report`, `test-results`.
+- Jobs: `lint` (lint + typecheck) → `test` matrix (`api`, `ui`; fail-fast false; Chromium only
+  for `ui`) → `report` (always after lint passed: merge both projects' `allure-results`, restore
+  `history.jsonl` from the published report on `main`, generate Allure, write pass/fail/flaky counts
+  per project to the run summary with `scripts/ci-summary.mjs`) → `publish-report` (deploy to
+  GitHub Pages on `main`, even when tests fail): https://ananobb.github.io/Ashley/
+- Artifacts (14-day retention): `allure-results-<project>`, `playwright-report-<project>`,
+  `test-results-<project>`, `allure-report`.
 - After pushing, watch the run (`gh run watch`) and report the result.
 
 ## Commands
@@ -162,9 +167,6 @@ the User-Agent), AI usage (short and honest). Every command in it must work in a
 Still missing: CI badge, design decisions, AI usage, headed / single-test commands.
 
 ## Planned (not built yet)
-- CI: separate `lint` job, then a `test` matrix (`api`, `ui`; fail-fast false; browsers only for UI),
-  then a `report` job that merges results and keeps Allure history.
-- Per-project artifacts (`allure-results-<project>` etc.) and a job summary with pass/fail counts.
 - Allure environment info: base URLs, browser, Node version, User-Agent.
 - Scripts: `format`, `test:smoke`, `allure:serve`.
 - Feature branches + PRs to main instead of pushing straight to `main`.

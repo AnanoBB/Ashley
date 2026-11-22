@@ -62,13 +62,37 @@ Each assignment step is a `test.step()`, so the steps show up in both reports.
 ## CI
 
 `.github/workflows/ci.yml` runs on every push (any branch), on pull requests from forks, and on
-manual dispatch. It runs lint and the type check, then the API and UI tests (Chromium) in one run,
-then generates the Allure report. The Allure report, the Playwright HTML report and the raw results are uploaded as build artifacts
-(Actions run → **Artifacts**).
+manual dispatch:
 
+```
+lint ──► test (api) ──┐
+     └─► test (ui) ───┴─► report ──► publish-report (main only)
+```
+
+| Job                   | What it does                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`                | ESLint, Prettier check, TypeScript type check                                                                                                      |
+| `test (api)` / `(ui)` | One Playwright project each, in parallel. Both always finish (`fail-fast: false`). Chromium is installed only for `ui`.                            |
+| `report`              | Merges both projects' Allure results, restores the Allure history (on `main`), generates the report and writes pass/fail counts to the run summary |
+| `publish-report`      | Deploys the Allure report to GitHub Pages on `main`, even when tests fail                                                                          |
+
+**Artifacts** (Actions run → **Artifacts**, kept 14 days):
+
+| Artifact                                         | Contents                                   |
+| ------------------------------------------------ | ------------------------------------------ |
+| `allure-report`                                  | The merged Allure report (both projects)   |
+| `allure-results-api` / `allure-results-ui`       | Raw Allure results per project             |
+| `playwright-report-api` / `playwright-report-ui` | Playwright HTML report per project         |
+| `test-results-api` / `test-results-ui`           | Traces, videos and screenshots of failures |
+
+- The run's **Summary** tab shows passed / failed / broken / skipped / flaky counts per project and,
+  on `main`, a link to the published report.
+- **Allure history:** on `main`, the report job downloads `history.jsonl` from the published report
+  before generating and publishes the updated file with it, so the report shows trends across runs.
+  Locally, `history.jsonl` is created next to `allurerc.mjs` (git-ignored).
 - A newer commit on the same branch cancels the run still in progress.
-- On pushes to `main`, the Allure report is also published to GitHub Pages, even when tests fail:
-  https://ananobb.github.io/Ashley/. One-time setup: **Settings → Pages → Source: GitHub Actions**.
+- Live report: https://ananobb.github.io/Ashley/. One-time setup: **Settings → Pages → Source:
+  GitHub Actions**.
 
 ## Project structure
 
