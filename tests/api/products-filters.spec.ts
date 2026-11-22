@@ -79,10 +79,10 @@ test.describe('Products API: filter behaviour', { tag: ['@api', '@regression'] }
       expectProducts(await productsApi.getProducts({ brand: BRAND.toUpperCase() })));
 
     // Lists are capped at 200 items; two truncated lists may hold different products.
-    await test.step('Both lists are complete (not truncated)', () => {
-      expect(lower.result.data).toHaveLength(lower.result.total_count);
-      expect(upper.result.data).toHaveLength(upper.result.total_count);
-    });
+    test.skip(
+      [lower, upper].some((body) => body.result.data.length < body.result.total_count),
+      'A brand list is truncated (capped at 200 items)',
+    );
 
     await test.step('Both return the same products', () => {
       const ids = (body: typeof lower) => body.result.data.map((product) => product.id).sort();

@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, Response } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class HomePage extends BasePage {
@@ -12,8 +12,9 @@ export class HomePage extends BasePage {
     this.heroShopMattress = page.getByTestId('hero_shop_mattress_btn').filter({ visible: true });
   }
 
-  async goto(): Promise<void> {
-    await this.open('/');
+  async goto(): Promise<Response | null> {
+    const response = await this.open('/');
     await this.heroShopMattress.waitFor();
+    return response;
   }
 }

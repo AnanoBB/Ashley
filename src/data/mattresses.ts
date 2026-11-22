@@ -78,3 +78,17 @@ export function cheapestSize(mattress: Mattress): MattressSize {
   }
   return rest.reduce((min, size) => (size.priceCents < min.priceCents ? size : min), first);
 }
+
+export function findByTitle(catalog: MattressCatalog, title: string): Mattress {
+  const mattress = Object.values(catalog).find((candidate) => candidate.title === title);
+  if (!mattress) {
+    throw new Error(`"${title}" is not a mattress from the catalog API`);
+  }
+  return mattress;
+}
+
+/**
+ * A mattress page or listing: path `/mattress` or `/mattresses/…`, not e.g. `/mattress-protector`.
+ * A RegExp, not a predicate: `toHaveURL(predicate)` also waits for the slow `load` event.
+ */
+export const MATTRESS_URL = /^https?:\/\/[^/]+\/mattress(es)?(\/|\?|#|$)/;

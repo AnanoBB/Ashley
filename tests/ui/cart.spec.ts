@@ -1,6 +1,6 @@
 import { test, expect } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
-import { sizeOf } from '../../src/data/mattresses';
+import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
 
 const DEFAULT_SIZE = 'Queen';
@@ -9,7 +9,8 @@ test.describe(
   'Assignment flow: home → Shop Mattress → add to cart',
   { tag: ['@ui', '@smoke', '@cart'] },
   () => {
-    test('UI-13 UI-14 UI-15 mattress from the hero is added to the cart', async ({
+    // One user journey; UI-14 (cart line) and UI-15 (cart total) from the test plan are its steps.
+    test('UI-13 the mattress from the hero is added to the cart', async ({
       page,
       homePage,
       productPage,
@@ -17,22 +18,26 @@ test.describe(
       mattressCatalog,
     }) => {
       await test.step('Open the home page', async () => {
-        await homePage.goto();
+        const response = await homePage.goto();
+        expect(response?.status(), 'home page HTTP status').toBe(200);
         await expect(homePage.heroHeading).toBeVisible();
       });
 
       await test.step('Click "Shop Mattress" in the hero banner', async () => {
         await homePage.heroShopMattress.click();
-        await expect(page).toHaveURL(/\/mattress/);
+        await expect(page).toHaveURL(MATTRESS_URL);
         await productPage.waitUntilReady();
       });
 
-      const title = await productPage.heading.innerText();
-      const mattress = Object.values(mattressCatalog).find(
-        (candidate) => candidate.title === title,
-      );
-      expect(mattress, `"${title}" is a mattress from the catalog API`).toBeDefined();
-      const expectedPrice = formatUsd(sizeOf(mattress!, DEFAULT_SIZE).priceCents);
+      const { title, expectedPrice } =
+        await test.step('Look up the expected price in the catalog', async () => {
+          const shownTitle = await productPage.heading.innerText();
+          const mattress = findByTitle(mattressCatalog, shownTitle);
+          return {
+            title: shownTitle,
+            expectedPrice: formatUsd(sizeOf(mattress, DEFAULT_SIZE).priceCents),
+          };
+        });
 
       const { response } = await test.step('Add the mattress to the cart', () =>
         productPage.addToCart());
@@ -142,9 +147,13 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
     });
   });
 
+  // Guards against tests sharing a cart (e.g. a shared storageState added later).
   test('UI-22 a new browser context starts with an empty cart', async ({ homePage, cartPage }) => {
-    await test.step('Header counter is empty', async () => {
+    await test.step('The server cart is empty and the header counter shows nothing', async () => {
+      const cartLoad = cartPage.waitForCartLoad();
       await homePage.goto();
+      const cart = CartResponseSchema.parse(await (await cartLoad).json());
+      expect(cart.result.itemsCount).toBe(0);
       await expect(homePage.header.cartIcon).toHaveText('');
     });
 
@@ -154,4 +163,43 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
       await expect(cartPage.lineItems).toHaveCount(0);
     });
   });
+
+  test(
+    'UI-26 a failed add-to-cart request leaves the cart empty',
+    {
+      tag: '@negative',
+      annotation: {
+        type: 'finding',
+        description:
+          'when POST /carts/my/items fails, the product page shows no error: the click silently does nothing',
+      },
+    },
+    async ({ page, productPage, cartPage, mattressCatalog }) => {
+      const mattress = mattressCatalog.classic;
+
+      await test.step('The add-to-cart API returns 500 (stubbed)', () =>
+        page.route('**/carts/my/items*', (route) =>
+          route.request().method() === 'POST'
+            ? route.fulfill({ status: 500, json: { status: 'error', error: 'stubbed failure' } })
+            : route.fallback(),
+        ));
+
+      await test.step(`Open ${mattress.title} and click Add to Cart`, async () => {
+        await productPage.goto(mattress.path);
+        const { response } = await productPage.tryAddToCart();
+        expect(response.status()).toBe(500);
+      });
+
+      await test.step('The shopper stays on the product page and can try again', async () => {
+        await expect(page).toHaveURL(mattress.path);
+        await expect(productPage.addToCartButton).toBeEnabled();
+      });
+
+      await test.step('The cart is empty', async () => {
+        await cartPage.goto();
+        await expect(cartPage.emptyState).toBeVisible();
+        await expect(cartPage.lineItems).toHaveCount(0);
+      });
+    },
+  );
 });

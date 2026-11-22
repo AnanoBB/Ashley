@@ -1,5 +1,5 @@
 import type { APIResponse } from '@playwright/test';
-import { BaseApi, type QueryParams } from './BaseApi';
+import { BaseApi } from './BaseApi';
 
 export interface ProductsQuery {
   brand?: string;
@@ -7,14 +7,9 @@ export interface ProductsQuery {
   lang?: string;
 }
 
-function toParams(query: ProductsQuery): QueryParams {
-  return Object.fromEntries(
-    Object.entries(query).filter(([, value]) => value !== undefined),
-  ) as QueryParams;
-}
-
 export class ProductsApi extends BaseApi {
   getProducts(query: ProductsQuery): Promise<APIResponse> {
-    return this.get('/products', toParams(query));
+    // Playwright drops undefined params, so an omitted filter is not sent.
+    return this.get('/products', query as Record<string, string>);
   }
 }

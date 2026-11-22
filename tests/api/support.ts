@@ -1,5 +1,6 @@
 import type { APIResponse } from '@playwright/test';
 import { test, expect } from '../../src/fixtures';
+import { MATTRESSES } from '../../src/data/mattresses';
 import { ApiErrorSchema, type ApiError } from '../../src/api/schemas/error.schema';
 import {
   ProductsResponseSchema,
@@ -7,7 +8,7 @@ import {
 } from '../../src/api/schemas/products.schema';
 
 export const BRAND = 'awara';
-export const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
+export const PRODUCT_NAME = MATTRESSES.classic.apiName;
 
 async function expectJson(response: APIResponse, status: number): Promise<unknown> {
   await test.step(`Response status is ${status}`, () => {
