@@ -8,9 +8,14 @@ import { afterEach, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 const scripts = import.meta.dirname;
+const dirs = [];
 let dir;
 
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => {
+  for (const created of dirs.splice(0)) {
+    rmSync(created, { recursive: true, force: true });
+  }
+});
 
 const BUG_LABELS = [
   { name: 'tag', value: '@known-bug' },
@@ -20,6 +25,7 @@ const BUG_LABELS = [
 /** Writes Allure results; each is { id, name, status, message?, labels?, stop? }. */
 function writeResults(results) {
   dir = mkdtempSync(join(tmpdir(), 'allure-results-'));
+  dirs.push(dir);
   for (const { id, message, labels = [], stop = 1, ...rest } of results) {
     const result = {
       historyId: rest.name,
@@ -104,4 +110,49 @@ test('ci-summary counts the last attempt, flaky retries and known bugs', () => {
   assert.match(stdout, /- \*\*flaky\*\* `ui` retried/);
   assert.match(stdout, /- \*\*broken\*\* `ui` broken one/);
   assert.match(stdout, /- \*\*known bug\*\* `ui` bug/);
+});
+
+test('mark-known-bugs treats a known-bug test without an expectedError label as unexpected', () => {
+  writeResults([
+    {
+      id: 'a',
+      name: 'no label',
+      status: 'passed',
+      labels: [{ name: 'tag', value: '@known-bug' }],
+      message: 'Received: "x/mattress"',
+    },
+  ]);
+
+  assert.equal(run('mark-known-bugs.mjs', '--strict').status, 1);
+  assert.deepEqual([read('a').status, knownBugLabel(read('a'))], ['broken', 'unexpected-failure']);
+});
+
+test('mark-known-bugs leaves already marked results unchanged on a second run', () => {
+  writeResults([
+    { id: 'a', name: 'expected', status: 'passed', labels: BUG_LABELS, message: 'x/mattress"' },
+  ]);
+  run('mark-known-bugs.mjs');
+  const once = read('a');
+
+  run('mark-known-bugs.mjs');
+
+  assert.deepEqual(read('a'), once);
+});
+
+test('ci-summary counts a known bug that needed a retry as flaky', () => {
+  writeResults([
+    { id: 'a1', name: 'slow bug', status: 'broken', stop: 1 },
+    {
+      id: 'a2',
+      name: 'slow bug',
+      status: 'failed',
+      stop: 2,
+      labels: [{ name: 'knownBug', value: 'expected-failure' }],
+    },
+  ]);
+
+  const { stdout } = run('ci-summary.mjs');
+
+  assert.match(stdout, /\| ui \| 0 \| 0 \| 0 \| 0 \| 1 \| 0 \|/);
+  assert.match(stdout, /- \*\*flaky\*\* `ui` slow bug/);
 });
