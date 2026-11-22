@@ -11,6 +11,7 @@
     "test": "playwright test",
     "test:api": "playwright test --project=api",
     "test:ui": "playwright test --project=ui",
+    "test:smoke": "playwright test --grep @smoke",
     "lint": "eslint . && prettier --check .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "typecheck": "tsc --noEmit",

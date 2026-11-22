@@ -5,10 +5,12 @@ import { env, USER_AGENT } from './src/config/env';
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
-  // The shared QA storefront slows down sharply with more parallel sessions (buy box >15 s at 4).
-  workers: env.isCI ? 2 : 3,
+  // The shared QA storefront slows down sharply with more parallel sessions: with 3 workers, tests
+  // time out on page loads; 2 is both stable and faster.
+  workers: 2,
   forbidOnly: env.isCI,
-  retries: env.isCI ? 2 : 0,
+  // One retry in CI absorbs a rare QA-env hiccup; the run summary still counts it as flaky.
+  retries: env.isCI ? 1 : 0,
   reporter: [
     ['list'],
     ['html', { open: 'never' }],
