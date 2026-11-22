@@ -100,3 +100,6 @@ jobs:
       - name: Deploy Allure report to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v5
+
+      - name: Link the report in the run summary
+        run: echo "### [Open the Allure report](${{ steps.deploy.outputs.page_url }})" >> "$GITHUB_STEP_SUMMARY"
