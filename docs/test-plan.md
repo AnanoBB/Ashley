@@ -61,19 +61,36 @@ Priority: **P1** = assignment requirement or core purchase path · **P2** = impo
 
 ### API
 
-| ID     | Layer | Title                                                                                                                                                 | Type     | Priority | Notes                                                         |
-| ------ | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------- | ------------------------------------------------------------- |
-| API-01 | API   | `GET /products?brand=awara` returns 200 and `result.data.length > 0`                                                                                  | Positive | P1       | Assignment step 1. Currently blocked by Cloudflare (403).     |
-| API-02 | API   | `GET /products?name=the-awara-hybrid-mattress-30&lang=en&brand=awara` returns 200 and exactly 1 item                                                  | Positive | P1       | Assignment step 2. Currently blocked by Cloudflare (403).     |
-| API-03 | API   | Brand list response matches the products schema (envelope + required product fields)                                                                  | Positive | P1       | Part of API-01's checks                                       |
-| API-04 | API   | Every product in the brand list has `brand === "awara"`                                                                                               | Positive | P2       |                                                               |
-| API-05 | API   | `result.total_count` equals `result.data.length`                                                                                                      | Positive | P2       | Seen in both samples. Confirm there's no pagination.          |
-| API-06 | API   | The product found by name has `name === "the-awara-hybrid-mattress-30"`, title "Awara Classic Hybrid Mattress", and a positive `pricing.price.amount` | Positive | P2       |                                                               |
-| API-07 | API   | Unknown product name (`name=does-not-exist&brand=awara`) returns 200 with an empty `result.data`                                                      | Negative | P2       | Expected behavior not observed yet. Confirm on the first run. |
-| API-08 | API   | Unknown brand (`brand=unknown-brand`) returns 200 with empty data or a 4xx, never 5xx                                                                 | Negative | P3       | Expected behavior not observed yet.                           |
-| API-09 | API   | Missing `brand` parameter: the response is handled (no 5xx), behavior documented                                                                      | Edge     | P3       | Exploratory: records actual behavior                          |
-| API-10 | API   | Name lookup is exact: a partial name (`the-awara-hybrid`) does not return the full product                                                            | Edge     | P3       |                                                               |
-| API-11 | API   | Requests send `User-Agent: E2EUI-Tests` (checked through the request trace / echo)                                                                    | Edge     | P3       | Guards the global config                                      |
+All automated in `tests/api/` and checked against the real API on 2026-11-22. Every test except API-12
+(whose 405 body is plain text) checks the status, a JSON `Content-Type` and the zod schema
+(products or error) before its own assertions. Where
+the API behaves differently from what we'd expect, the test asserts the actual behaviour and carries
+a `finding` annotation.
+
+| ID      | Layer | Title                                                                                                               | Type        | Priority | Notes                                                                                       |
+| ------- | ----- | ------------------------------------------------------------------------------------------------------------------- | ----------- | -------- | ------------------------------------------------------------------------------------------- |
+| API-01  | API   | `GET /products?brand=awara` returns 200, `result.data.length > 0`, and every product has `brand === "awara"`        | Positive    | P1       | Assignment step 1 (`@smoke`). `products.spec.ts`                                            |
+| API-02  | API   | `GET /products?name=the-awara-hybrid-mattress-30&lang=en&brand=awara` returns exactly 1 product, and it is that one | Positive    | P1       | Assignment step 2 (`@smoke`). `products.spec.ts`                                            |
+| API-03  | API   | Unknown brand (`brand=nonexistent`) returns 400 with an error naming the brand                                      | Negative    | P2       | `{"status":"error","error":"No such brand name 'nonexistent'"}`. `products-filters.spec.ts` |
+| API-04  | API   | Unknown product name returns 200 with empty `data` and `total_count: 0`                                             | Negative    | P2       | `products-filters.spec.ts`                                                                  |
+| API-05  | API   | Name without brand returns 400 "missed brand values"                                                                | Edge        | P2       | **Finding:** brand is required even when the name is given. `products-filters.spec.ts`      |
+| API-06  | API   | `lang=es` and an unknown `lang=xx` return the same body as `lang=en`                                                | Edge        | P3       | **Finding:** lang has no effect and any value is accepted; `translations` is empty          |
+| API-07a | API   | The brand filter is case-insensitive: `brand=AWARA` returns the same products as `brand=awara`                      | Edge        | P3       | `products-filters.spec.ts`                                                                  |
+| API-07b | API   | The name filter is case-sensitive: an uppercase name returns no products                                            | Edge        | P3       | **Finding:** brand ignores case but name doesn't                                            |
+| API-08  | API   | The product found by name matches its entry in the brand list (id, name, title, brand, price)                       | Consistency | P2       | `products.spec.ts`                                                                          |
+| API-09  | API   | No query parameters returns 400 "missed brand values"                                                               | Negative    | P2       | `@negative`. `products-negative.spec.ts`                                                    |
+| API-10  | API   | Empty brand (`brand=`) returns 400 "No such brand name"                                                             | Negative    | P3       | `@negative`                                                                                 |
+| API-11  | API   | A name with SQL-like characters, 3000 characters, or an empty value returns 200 with empty `data`, never 5xx        | Negative    | P2       | `@negative`, 3 tests                                                                        |
+| API-12  | API   | `POST`, `PUT` and `DELETE /products` return 405 "Defined methods: GET"                                              | Negative    | P3       | `@negative`, 3 tests. The body is `text/plain`, not the JSON error shape                    |
+
+Considered but not automated:
+
+- `total_count` equals `data.length`: true for `awara` (91), but lists are capped at **200** items,
+  so it fails for larger brands (`nectar`: 1025 total, 200 returned). Recorded as a finding instead.
+- A partial name (`the-awara-hybrid`) not matching the full product: covered in spirit by API-04 and
+  API-07b (the name filter is exact).
+- The User-Agent header on every request: set once in `playwright.config.ts` and proven by the API
+  tests passing (the API rejects other User-Agents with 403).
 
 ### UI: home and navigation
 
@@ -114,16 +131,16 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 ## 6. Risks and known issues
 
-| Risk / issue                                                                                                                              | Impact                                  | Mitigation                                                                                                                          |
-| ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| **The API host is blocked by Cloudflare for scripted clients** (every path returns 403 regardless of User-Agent; a real browser gets 200) | API-01…11 fail with 403                 | Report it as an environment defect with evidence (Ray IDs). Ask the owner to allow UA `E2EUI-Tests`. Keep the assertions unchanged. |
-| **The assignment URL has a typo** (`qa.awaraslep.com` doesn't exist)                                                                      | Nothing runs against the documented URL | Use `qa.awarasleep.com` (configurable via `BASE_URL`). Noted in the README.                                                         |
-| **The hero "Shop Mattress" goes to the wrong URL** (bug #1)                                                                               | UI-02 fails                             | `test.fail()` with an annotation. UI-03 still covers the navigation.                                                                |
-| Delayed overlays (cookie banner, promo popup, upsell popups)                                                                              | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                                                                |
-| A/B tests and promo changes (Dynamic Yield, countdowns)                                                                                   | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.                                                           |
-| Duplicate hidden DOM (responsive copies, a hidden inert nav)                                                                              | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.                                                          |
-| Bot protection (DataDome) during parallel CI runs                                                                                         | Random blocks                           | Limit workers in CI, and retry ×2 only in CI.                                                                                       |
-| Shared QA environment, with the cart stored on the server                                                                                 | Data leaks between tests                | A fresh context per test. No checkout, so no orders are created.                                                                    |
+| Risk / issue                                                                                       | Impact                                  | Mitigation                                                                          |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------- |
+| **The API host is blocked by Cloudflare for the assignment's User-Agent** (`E2EUI-Tests` gets 403) | All API tests fail with 403             | Resolved: the company provided `E2EUI-Tests-Brands-CI`, set in `src/config/env.ts`. |
+| **The assignment URL has a typo** (`qa.awaraslep.com` doesn't exist)                               | Nothing runs against the documented URL | Use `qa.awarasleep.com` (configurable via `BASE_URL`). Noted in the README.         |
+| **The hero "Shop Mattress" goes to the wrong URL** (bug #1)                                        | UI-02 fails                             | `test.fail()` with an annotation. UI-03 still covers the navigation.                |
+| Delayed overlays (cookie banner, promo popup, upsell popups)                                       | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                |
+| A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.           |
+| Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.          |
+| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers everywhere, and 1 retry only in CI (counted as flaky in the run summary). |
+| Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test. No checkout, so no orders are created.                    |
 
 ## 7. Entry and exit criteria
 

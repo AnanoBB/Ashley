@@ -27,7 +27,15 @@
 4. CI/CD with GitHub Actions: run tests on each commit; upload test artifacts (plus).
 
 ## Status
-- [x] Part 2: API tests. 2 tests in `tests/api/products.spec.ts`, passing. They were quarantined
+- [x] Part 2: API tests. 17 tests in `tests/api/`, passing. Assignment (`@smoke`): API-01 (non-empty,
+  every product has brand awara), API-02 (exactly 1, and it is the-awara-hybrid-mattress-30).
+  `@regression`: API-03..07 filter behaviour (`products-filters.spec.ts`), API-08 consistency between
+  the two queries, API-09..12 negative cases (`products-negative.spec.ts`, also `@negative`). Checked
+  against the real API on 2026-11-22: unknown/empty brand and missing brand → 400
+  `{ status: "error", error }`; unknown name → 200 empty; unsupported methods → 405 text/plain. API
+  findings (asserted as actual behaviour, annotated `finding`): brand is required even with name
+  (API-05); lang has no effect and any value is accepted (API-06); brand ignores case but name doesn't
+  (API-07a/b). Lists are capped at 200 items (`total_count` can be higher). They were quarantined
   while Cloudflare returned 403 for `E2EUI-Tests`; the quarantine was lifted after switching to
   `E2EUI-Tests-Brands-CI`.
 - [x] Part 1: UI tests (explored first → `docs/exploration.md`). 17 tests in `tests/ui/`, passing
@@ -98,6 +106,7 @@ tests/
 - Specs import `test` and `expect` from `src/fixtures`, never directly from `@playwright/test`.
 - Use `test.step()` for each assignment step so they show up in the Allure and HTML reports.
 - Tags: `@api` / `@ui` (layer), `@smoke` / `@regression` (depth), `@cart` / `@header` (feature),
+  `@negative` (API error handling),
   `@quarantine` (a test blocked by the environment: add the tag and `test.fixme` with the reason;
   none right now).
 - Tests are independent and can run in parallel.
@@ -116,8 +125,10 @@ tests/
   documented in the README.
 - API clients are thin and typed, use Playwright `request` with `params` (no string-built URLs),
   and return the raw `APIResponse`. Assertions live in tests.
-- Every API test: assert status 200 → parse the body with the zod schema → assignment assertion
-  (data length).
+- Every API test goes through `tests/api/support.ts`: `expectProducts` (200 → JSON Content-Type →
+  products schema) or `expectApiError` (expected 4xx → JSON → error schema), then its own assertions.
+- When the API behaves differently from what we'd expect, assert the actual behaviour and add a
+  `finding` annotation; don't leave a test red on purpose.
 
 ### UI
 - Page Object Model: locators as `readonly` fields, methods are user actions (`addToCart()`,
