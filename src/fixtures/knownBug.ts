@@ -6,13 +6,21 @@ const BUG_LIST_URL =
 /**
  * Details for a test that checks a known site bug (use with `test.fail(title, details, body)`):
  * the `@known-bug` tag, a note naming the bug in docs/exploration.md and an issue link for Allure.
+ * `expectedError` is text the bug's failure message contains (e.g. the failing matcher):
+ * scripts/mark-known-bugs.mjs reports any other failure as broken, not as the known bug.
  */
-export function knownBug(bugNumber: number, description: string): TestDetails {
+export function knownBug(
+  bugNumber: number,
+  description: string,
+  expectedError: string,
+): TestDetails {
   return {
     tag: '@known-bug',
     annotation: [
       { type: 'known bug', description: `docs/exploration.md #${bugNumber}: ${description}` },
       { type: 'issue', description: BUG_LIST_URL },
+      // Becomes the Allure label `expectedError`, read by scripts/mark-known-bugs.mjs.
+      { type: 'allure.label.expectedError', description: expectedError },
     ],
   };
 }

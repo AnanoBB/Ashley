@@ -4,17 +4,25 @@
 // show up red under the "Known product bugs" category (allurerc.mjs). A known-bug test that passes
 // is already "failed" (unexpected pass); it gets a message saying the bug may be fixed.
 // Each marked result gets a `knownBug` label (`expected-failure` or `no-longer-reproduces`), which
-// the Allure categories and scripts/ci-summary.mjs match on.
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
+// the Allure categories and scripts/ci-summary.mjs match on. A known-bug test that failed for
+// another reason (its message lacks the `expectedError` label from knownBug(), e.g. a page error or
+// a broken locator) is marked "broken", so it shows as a test problem instead of the known bug.
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import process from 'node:process';
 
 const KNOWN_BUG_PREFIX = 'Known bug (expected failure): ';
 const NO_LONGER_REPRODUCES =
   'Known bug no longer reproduces: the test passed but is marked test.fail(). Check the bug and remove test.fail().';
 
+const UNEXPECTED_FAILURE_PREFIX = 'Known-bug test failed for another reason than the bug: ';
+
 const dir = process.argv[2] ?? 'allure-results';
 let marked = 0;
+
+if (!existsSync(dir)) {
+  console.log(`No ${dir}/ folder: nothing to mark.`);
+  process.exit(0);
+}
 
 for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json'))) {
   const path = join(dir, file);
@@ -25,10 +33,15 @@ for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json
   );
   const alreadyMarked = result.labels.some((label) => label.name === 'knownBug');
   const message = result.statusDetails?.message ?? '';
+  const expectedError = result.labels.find((label) => label.name === 'expectedError')?.value;
   if (!isKnownBug || alreadyMarked) {
     continue;
   }
-  if (result.status === 'passed' && message) {
+  if (result.status === 'passed' && message && expectedError && !message.includes(expectedError)) {
+    result.status = 'broken';
+    result.statusDetails.message = UNEXPECTED_FAILURE_PREFIX + message;
+    result.labels.push({ name: 'knownBug', value: 'unexpected-failure' });
+  } else if (result.status === 'passed' && message) {
     result.status = 'failed';
     result.statusDetails.message = KNOWN_BUG_PREFIX + message;
     result.labels.push({ name: 'knownBug', value: 'expected-failure' });
@@ -42,4 +55,4 @@ for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json
   marked += 1;
 }
 
-process.stdout.write(`Marked ${marked} known-bug result(s) in ${dir}.\n`);
+console.log(`Marked ${marked} known-bug result(s) in ${dir}.`);

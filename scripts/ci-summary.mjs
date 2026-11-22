@@ -2,12 +2,14 @@
 // $GITHUB_STEP_SUMMARY. With retries there is one result per attempt: the last attempt counts,
 // and a test that passed after a failed or broken attempt is reported as flaky. Known bugs
 // (@known-bug, failing as expected) get their own column and are not listed as problems.
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import process from 'node:process';
 
 const dir = process.argv[2] ?? 'allure-results';
-const files = readdirSync(dir).filter((file) => file.endsWith('-result.json'));
+// A test job that died before uploading leaves no results: report that instead of crashing.
+const files = (existsSync(dir) ? readdirSync(dir) : []).filter((file) =>
+  file.endsWith('-result.json'),
+);
 const attemptsByTest = new Map();
 
 for (const file of files) {
