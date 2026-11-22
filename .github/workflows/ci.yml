@@ -14,11 +14,11 @@ permissions:
   contents: read
 
 jobs:
-  api-tests:
+  tests:
     # Every commit is already tested by the push event, so only run pull_request for PRs from forks.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -36,8 +36,12 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - name: Run API tests
-        run: npm run test:api
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # One run for both projects keeps a single HTML report; failing API tests don't stop the UI tests.
+      - name: Run API and UI tests
+        run: npm test
 
       - name: Generate Allure report
         if: ${{ !cancelled() && hashFiles('allure-results/*-result.json') != '' }}
@@ -78,7 +82,7 @@ jobs:
           retention-days: 14
 
   publish-report:
-    needs: api-tests
+    needs: tests
     # Publish the latest main report even when tests fail, so the failure can be read online.
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest

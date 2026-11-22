@@ -58,8 +58,8 @@ Each assignment step is a `test.step()`, so the steps show up in both reports.
 ## CI
 
 `.github/workflows/ci.yml` runs on every push (any branch), on pull requests from forks, and on
-manual dispatch. It runs lint, the type check and the API tests, then generates the Allure report.
-The Allure report, the Playwright HTML report and the raw results are uploaded as build artifacts
+manual dispatch. It runs lint and the type check, then the API and UI tests (Chromium) in one run,
+then generates the Allure report. The Allure report, the Playwright HTML report and the raw results are uploaded as build artifacts
 (Actions run → **Artifacts**).
 
 - A newer commit on the same branch cancels the run still in progress.
