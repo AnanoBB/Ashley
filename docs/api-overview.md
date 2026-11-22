@@ -1,8 +1,7 @@
 # API overview: Awara products (QA environment)
 
-> Checked on 2026-11-21. Response shapes come from real responses saved in a browser. Status codes
-> are the ones actually seen with curl and the browser. Anything marked **not observed** is unknown,
-> not guaranteed.
+> First checked on 2026-11-21 in a browser; status codes, errors and filter behaviour re-checked with
+> the test User-Agent on 2026-11-22. Every behaviour below is asserted by a test in `tests/api/`.
 
 ## Base URL
 
@@ -10,56 +9,48 @@
 | --- | ------------------------------------- | ---------------------- |
 | QA  | `https://api.qa-env.residenthome.com` | `API_URL` env variable |
 
-## Auth method
+## Access
 
-- **No authentication.** No API key, token or cookie is needed. A plain browser `GET` returns JSON.
-- **Required header:** `User-Agent: E2EUI-Tests-Brands-CI` (since
-  2026-11-22), set globally in `playwright.config.ts` from `src/config/env.ts`. The assignment's
-  `E2EUI-Tests` is still blocked.
-- **Cloudflare WAF in front of the API.** Non-browser clients (curl, Playwright's request context)
-  get a **403 HTML block page**, whatever the User-Agent is (tested with `E2EUI-Tests`, no UA, and a
-  Chrome UA). A browser on the same network gets through. Getting the tests through needs a WAF rule
-  on the owner's side; it lets through UA `E2EUI-Tests-Brands-CI` (200 JSON on both endpoints).
+- **No authentication.** No API key, token or cookie is needed.
+- **User-Agent:** a Cloudflare WAF sits in front of the API and lets through
+  `User-Agent: E2EUI-Tests-Brands-CI` (provided for these tests on 2026-11-22). It is set once in
+  `src/config/env.ts` and used by `playwright.config.ts`. The assignment's `E2EUI-Tests` still
+  gets a **403 HTML block page** (so did no User-Agent and a Chrome User-Agent on 2026-11-21).
 
-## Endpoints
+## Endpoint: `GET /products`
 
-### 1. List products by brand
+One resource, filtered by query parameters. Both assignment calls use it and share one response
+shape.
 
-`GET /products?brand={brand}`
+| Query param | Required | Behaviour (observed)                                                                      |
+| ----------- | -------- | ----------------------------------------------------------------------------------------- |
+| `brand`     | **yes**  | Must be a known brand; case-insensitive (`AWARA` = `awara`). Missing → 400, unknown → 400 |
+| `name`      | no       | Exact, case-sensitive product slug. No match → 200 with an empty list                     |
+| `lang`      | no       | Has no effect: `es`, `fr` and invalid values return the same body as `en`                 |
 
-| Query param | Type   | Required | Example |
-| ----------- | ------ | -------- | ------- |
-| `brand`     | string | yes\*    | `awara` |
+Examples:
 
-Example: `GET /products?brand=awara` returned **91** products, all with `brand: "awara"`.
-
-### 2. Get a product by name
-
-`GET /products?name={name}&lang={lang}&brand={brand}`
-
-| Query param | Type   | Required | Example                        |
-| ----------- | ------ | -------- | ------------------------------ |
-| `name`      | string | yes\*    | `the-awara-hybrid-mattress-30` |
-| `lang`      | string | no\*     | `en`                           |
-| `brand`     | string | yes\*    | `awara`                        |
-
-Example: it returned exactly **1** product (`id 64e7b25e420000075e9aba89`, title "Awara Classic
-Hybrid Mattress").
-
-\* "Required" reflects how the assignment uses the endpoint. Behavior without these params was not
-observed.
-
-Both endpoints are the same resource (`/products`) with different filters, so they share one
-response shape.
+- `GET /products?brand=awara` → 200, **91** products, all with `brand: "awara"`.
+- `GET /products?name=the-awara-hybrid-mattress-30&lang=en&brand=awara` → 200, exactly **1**
+  product (`id 64e7b25e420000075e9aba89`, "Awara Classic Hybrid Mattress").
 
 ## Status codes
 
-| Code              | When                                                         | Body                                                 | Observed                                  |
-| ----------------- | ------------------------------------------------------------ | ---------------------------------------------------- | ----------------------------------------- |
-| **200**           | Request reaches the API (browser)                            | JSON, see below                                      | yes (both endpoints)                      |
-| **403**           | Cloudflare WAF blocks a non-browser client (curl/Playwright) | `text/html` "Attention Required! \| Cloudflare" page | yes (both endpoints, with and without UA) |
-| 200, empty `data` | Filter matches nothing (e.g. unknown `name`)                 | expected `result.data: []`                           | **not observed**                          |
-| 4xx/5xx           | Invalid params / server errors                               | unknown                                              | **not observed**                          |
+| Code    | When                                                 | Body                                                                                        | Test               |
+| ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------ |
+| **200** | Valid query, including one that matches nothing      | JSON, see below (`data: []`, `total_count: 0` when nothing matches)                         | API-01, 02, 04     |
+| **400** | `brand` missing (even with `name`), empty or unknown | `{ "status": "error", "error": "missed brand values" }` or `"No such brand name '<brand>'"` | API-03, 05, 09, 10 |
+| **403** | User-Agent not allowed by Cloudflare                 | `text/html` "Attention Required! \| Cloudflare" page                                        | (README §12)       |
+| **405** | `POST`, `PUT`, `DELETE`                              | `text/plain` "POST not allowed. Defined methods: GET"                                       | API-12             |
+
+Unusual `name` values (SQL-like characters, 3000 characters, empty) return 200 with an empty list,
+never a 5xx (API-11).
+
+## Limits
+
+- **Lists are capped at 200 items**, while `total_count` reports the full number (brand `nectar`:
+  `total_count` 1025, 200 returned). There is no paging parameter we know of. Tests that compare
+  lists (API-07a, API-08) first check the list is complete (`data.length === total_count`).
 
 ## Response shape (200)
 
@@ -67,7 +58,7 @@ response shape.
 {
   "status": "ok", // a string, NOT an object
   "result": {
-    "total_count": 91, // equals result.data.length in both samples
+    "total_count": 91, // can be higher than data.length: lists are capped at 200
     "count_by_category": {
       "category": { "Mattress": 11, "Accessories": 28 /* ... */ },
       "group": { "Mattress": 14, "Bundle": 10 /* ... */ },
@@ -137,6 +128,8 @@ Keys on **some** items only:
 
 ## Where this is used in the repo
 
-- Schema: `src/api/schemas/products.schema.ts` (zod; required keys typed strictly, optional keys `.optional()`, `.passthrough()`)
-- Client: `src/api/ProductsApi.ts`, `getProducts({ brand, name, lang })`
-- Tests: `tests/api/products.spec.ts`
+- Schemas: `src/api/schemas/products.schema.ts` and `error.schema.ts` (zod; required keys typed
+  strictly, optional keys `.optional()`, `.passthrough()` for keys we don't check)
+- Client: `src/api/ProductsApi.ts` (`getProducts`, `sendProducts` for other HTTP methods)
+- Shared checks: `tests/api/support.ts` (`expectProducts`, `expectApiError`, `expectTextError`)
+- Tests: `tests/api/products.spec.ts`, `products-filters.spec.ts`, `products-negative.spec.ts`
