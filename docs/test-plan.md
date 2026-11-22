@@ -1,7 +1,8 @@
 # Test plan: Awara QA home assignment
 
-> Draft, 2026-11-21. Based on the assignment in `CLAUDE.md`, the API check in `docs/api-overview.md`
-> and the UI exploration in `docs/exploration.md` (bug numbers like **#1** refer to that file).
+> Written 2026-11-21, updated 2026-11-22 to match what is automated. Based on the assignment in
+> `CLAUDE.md`, the API notes in `docs/api-overview.md` and the UI exploration in
+> `docs/exploration.md` (bug numbers like **#1** refer to that file).
 
 ## 1. Goal
 
@@ -19,40 +20,44 @@ first slice of a regression suite that can grow later.
 | **UI: mattress PDP**        | The right product opens, the default size and price show, and a different size can be selected.                                                                                |
 | **UI: add to cart**         | The upsell popup is handled, the item is added (API call + header counter), and the cart shows the right name, size, price, quantity and total.                                |
 | **UI: header (mattresses)** | The mattress mega menu (3 product cards, "Shop All Mattresses"), the top-level "Mattresses" link, the logo and the cart icon.                                                  |
-| **Cross-cutting**           | User-Agent `E2EUI-Tests` on every request, overlays (cookie banner, promo popup) handled centrally, Allure + HTML reports, CI on every push.                                   |
+| **Cross-cutting**           | User-Agent `E2EUI-Tests-Brands-CI` on every request, overlays (cookie banner, promo popup) handled centrally, Allure + HTML reports, CI on every push.                         |
 
 **Environment:** QA only: UI `https://qa.awarasleep.com`, API `https://api.qa-env.residenthome.com`.
 **Browser:** desktop Chromium 1440×900 (the viewport the exploration used).
 
 ## 3. Out of scope
 
-| Item                                                                    | Reason                                                                                                                                 |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Checkout, payment (card, PayPal, Amazon Pay, Affirm), order placement   | Not in the assignment. It would also create real orders and payment calls in a shared QA environment.                                  |
-| My Account / login / registration                                       | Not in the assignment, and no test credentials were provided.                                                                          |
-| Bundles, bed frames, bedding, accessories                               | The assignment is about mattresses. The framework supports them later (data-driven product catalog).                                   |
-| Mobile and tablet layouts, Firefox and WebKit                           | Time-boxed home assignment. Exploration showed separate responsive layouts, so this is the first thing to add next.                    |
-| Cart API write endpoints (`POST /carts/my/items`, etc.) as API tests    | The API host is behind a Cloudflare block for scripted clients (see §6). The add-to-cart call is verified through the UI test instead. |
-| Performance, load and security testing                                  | Needs dedicated tooling and the environment owner's permission. Load would also trip Cloudflare and DataDome bot protection.           |
-| Full accessibility audit                                                | Out of time budget. The a11y findings from exploration are reported as bugs (#9, #15, #21, #23) rather than automated.                 |
-| Visual regression (screenshots)                                         | Marketing content changes often (promos, countdowns, A/B tests through Dynamic Yield), so snapshots would be unstable.                 |
-| Third-party widgets (Intercom chat, UserWay, Extend protection content) | Owned by vendors. We only make sure they don't block the flow.                                                                         |
-| Pricing correctness against business rules                              | No pricing spec is available. Price checks assert UI/API consistency (the same price on PDP, cart and API), not the "right" price.     |
+| Item                                                                    | Reason                                                                                                                                                                           |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkout, payment (card, PayPal, Amazon Pay, Affirm), order placement   | Not in the assignment. It would also create real orders and payment calls in a shared QA environment.                                                                            |
+| My Account / login / registration                                       | Not in the assignment, and no test credentials were provided.                                                                                                                    |
+| Bundles, bed frames, bedding, accessories                               | The assignment is about mattresses. The framework supports them later (data-driven product catalog).                                                                             |
+| Mobile and tablet layouts, Firefox and WebKit                           | Time-boxed home assignment. Exploration showed separate responsive layouts, so this is the first thing to add next.                                                              |
+| Cart API write endpoints (`POST /carts/my/items`, etc.) as API tests    | Not in the assignment. The cart is tied to the browser's auth token, so API writes need that token to be reliable. The add-to-cart call is verified through the UI test instead. |
+| Performance, load and security testing                                  | Needs dedicated tooling and the environment owner's permission. Load would also trip Cloudflare and DataDome bot protection.                                                     |
+| Full accessibility audit                                                | Out of time budget. The a11y findings from exploration are reported as bugs (#9, #15, #21, #23) rather than automated.                                                           |
+| Visual regression (screenshots)                                         | Marketing content changes often (promos, countdowns, A/B tests through Dynamic Yield), so snapshots would be unstable.                                                           |
+| Third-party widgets (Intercom chat, UserWay, Extend protection content) | Owned by vendors. We only make sure they don't block the flow.                                                                                                                   |
+| Pricing correctness against business rules                              | No pricing spec is available. Price checks assert UI/API consistency (the same price on PDP, cart and API), not the "right" price.                                               |
 
 ## 4. Approach
 
 - **Layers:** API tests use Playwright's `request` fixture and zod schemas. UI tests use page objects
-  plus shared component objects (Header, CookieBanner, PromoModal, UpsellModal).
-- **Order of assertions (API):** status 200, then the schema, then the business rule.
+  plus a shared `Header` component; popups (cookie banner, promo, protection plan) are closed by
+  handlers in `src/components/overlays.ts`, and the add-to-cart upsell by `ProductPage.addToCart()`.
+- **Order of assertions (API):** status, then the Content-Type, then the schema, then the business
+  rule.
 - **Overlays:** handled once with `page.addLocatorHandler()` and a pre-set cookie consent, never with
   sleeps.
 - **Locators:** prefer test IDs and role-based locators, as documented in `docs/exploration.md`. No CSS
   classes (MUI hashes them).
 - **Test isolation:** a fresh browser context per test, because the cart is stored on the server and
-  tied to cookies.
-- **Known bugs:** a test that hits a documented bug is marked `test.fail()` with an annotation pointing
-  to the bug, so the report shows "known issue", not just "red". Assertions are never weakened to pass.
-- **Tags:** `@api`/`@ui`, `@smoke`/`@regression`, plus area tags (`@mattress`, `@header`, `@cart`).
+  tied to the browser's auth token.
+- **Known bugs:** a test that hits a documented bug is declared with `test.fail()` and tagged
+  `@known-bug`, with a note pointing to the bug. CI stays green, and Allure shows it red under
+  "Known product bugs". Assertions are never weakened to pass.
+- **Tags:** `@api`/`@ui`, `@smoke`/`@regression`, area tags (`@header`, `@cart`), `@negative` and
+  `@known-bug`.
 
 ## 5. Test cases
 
@@ -74,7 +79,7 @@ a `finding` annotation.
 | API-03  | API   | Unknown brand (`brand=nonexistent`) returns 400 with an error naming the brand                                      | Negative    | P2       | `{"status":"error","error":"No such brand name 'nonexistent'"}`. `products-filters.spec.ts` |
 | API-04  | API   | Unknown product name returns 200 with empty `data` and `total_count: 0`                                             | Negative    | P2       | `products-filters.spec.ts`                                                                  |
 | API-05  | API   | Name without brand returns 400 "missed brand values"                                                                | Edge        | P2       | **Finding:** brand is required even when the name is given. `products-filters.spec.ts`      |
-| API-06  | API   | `lang=es` and an unknown `lang=xx` return the same body as `lang=en`                                                | Edge        | P3       | **Finding:** lang has no effect and any value is accepted; `translations` is empty          |
+| API-06  | API   | `lang=es`, `lang=fr` and an unknown `lang=xx` return the same body as `lang=en`                                     | Edge        | P3       | **Finding:** lang has no effect and any value is accepted; `translations` is empty          |
 | API-07a | API   | The brand filter is case-insensitive: `brand=AWARA` returns the same products as `brand=awara`                      | Edge        | P3       | `products-filters.spec.ts`                                                                  |
 | API-07b | API   | The name filter is case-sensitive: an uppercase name returns no products                                            | Edge        | P3       | **Finding:** brand ignores case but name doesn't                                            |
 | API-08  | API   | The product found by name matches its entry in the brand list (id, name, title, brand, price)                       | Consistency | P2       | `products.spec.ts`                                                                          |
@@ -85,12 +90,13 @@ a `finding` annotation.
 
 Considered but not automated:
 
-- `total_count` equals `data.length`: true for `awara` (91), but lists are capped at **200** items,
-  so it fails for larger brands (`nectar`: 1025 total, 200 returned). Recorded as a finding instead.
+- `total_count` equals `data.length` as a rule for every brand: lists are capped at **200** items, so
+  it fails for larger brands (`nectar`: 1025 total, 200 returned). Recorded as a finding. For `awara`
+  (91) API-07a and API-08 check it as a precondition before comparing lists.
 - A partial name (`the-awara-hybrid`) not matching the full product: covered in spirit by API-04 and
   API-07b (the name filter is exact).
 - The User-Agent header on every request: set once in `playwright.config.ts` and proven by the API
-  tests passing (the API rejects other User-Agents with 403).
+  tests passing (the API rejects the assignment's `E2EUI-Tests` with 403).
 
 ### UI: home and navigation
 
@@ -98,7 +104,7 @@ Considered but not automated:
 | ----- | ----- | -------------------------------------------------------------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
 | UI-01 | UI    | Home page opens: URL `/`, title present, hero h1 visible                                                 | Positive | P1       | Assignment step 1                                                                                                    |
 | UI-02 | UI    | Clicking hero "Shop Mattress" opens `/mattress`                                                          | Positive | P1       | Assignment step 2. **Known bug #1**: it goes to `/mattresses/essential-latex-hybrid-mattress`. Marked `test.fail()`. |
-| UI-03 | UI    | Hero "Shop Mattress" opens a mattress product page (h1 contains "Mattress", Add to Cart visible)         | Positive | P1       | Proves the click works regardless of bug #1                                                                          |
+| UI-03 | UI    | Hero "Shop Mattress" opens a mattress product page (URL contains `/mattress`, h1 is a catalog mattress)  | Positive | P1       | Proves the click works regardless of bug #1                                                                          |
 | UI-04 | UI    | The cookie banner and promo popup don't block the flow (handled automatically)                           | Edge     | P1       | Delayed overlays (~seconds and ~16 s)                                                                                |
 | UI-05 | UI    | Header "Mattresses" hover opens the mega menu with 3 cards: Essential, Classic, Premier                  | Positive | P2       |                                                                                                                      |
 | UI-06 | UI    | Each mega menu card opens the matching product page (h1 = card name)                                     | Positive | P2       | Data-driven ×3                                                                                                       |
@@ -129,6 +135,17 @@ Considered but not automated:
 **Total: 35 cases.** 11 are P1 (the assignment plus the core path), 15 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
+**Automated (34 tests):** all API cases (API-01 … 12, 17 tests) and UI-01, 02, 03, 05, 06 (×3),
+07 (×3), 08, 09, 12, 13/14/15 (one test), 16, 21, 22.
+
+**Not automated:**
+
+| ID                    | Why                                                                                             |
+| --------------------- | ----------------------------------------------------------------------------------------------- |
+| UI-04                 | Cut in the submission review; the popups are still closed by fixtures in every UI test          |
+| UI-18, UI-19, UI-20   | Cut: unstable at 0 retries because of cart page bugs (README findings 3–4, exploration #25–#26) |
+| UI-10, 11, 17, 23, 24 | P3 backlog                                                                                      |
+
 ## 6. Risks and known issues
 
 | Risk / issue                                                                                       | Impact                                  | Mitigation                                                                          |
@@ -140,11 +157,11 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 | A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.           |
 | Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.          |
 | Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers everywhere, and 1 retry only in CI (counted as flaky in the run summary). |
-| Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test. No checkout, so no orders are created.                    |
+| Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test (UI-22 checks it). No checkout, so no orders are created.  |
 
 ## 7. Entry and exit criteria
 
-- **Entry:** the QA environment is reachable, and the API is reachable for scripted clients (still open, see §6).
+- **Entry:** the QA environment is reachable, and the API is reachable for scripted clients (met with `E2EUI-Tests-Brands-CI`, see §6).
 - **Exit:** every P1 case is automated and either passing or marked as a known defect with evidence,
   lint and the type check pass, CI is green on `main`, and the Allure report is generated and uploaded.
 
