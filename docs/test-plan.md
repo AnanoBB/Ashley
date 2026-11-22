@@ -13,14 +13,14 @@ first slice of a regression suite that can grow later.
 
 ## 2. Scope
 
-| Area                        | What is covered                                                                                                                                                                |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **API: products**           | `GET /products` by brand and by name: status, response schema (`{ status, result: { total_count, data } }`), result counts, key field values, and a few negative/edge filters. |
-| **UI: home page**           | The page opens, the hero banner renders, and "Shop Mattress" navigates correctly.                                                                                              |
-| **UI: mattress PDP**        | The right product opens, the default size and price show, and a different size can be selected.                                                                                |
-| **UI: add to cart**         | The upsell popup is handled, the item is added (API call + header counter), and the cart shows the right name, size, price, quantity and total.                                |
-| **UI: header (mattresses)** | The mattress mega menu (3 product cards, "Shop All Mattresses"), the top-level "Mattresses" link, the logo and the cart icon.                                                  |
-| **Cross-cutting**           | User-Agent `E2EUI-Tests-Brands-CI` on every request, overlays (cookie banner, promo popup) handled centrally, Allure + HTML reports, CI on every push.                         |
+| Area                        | What is covered                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API: products**           | `GET /products` by brand and by name: status, response schema (`{ status, result: { total_count, data } }`), result counts, key field values, and a few negative/edge filters.        |
+| **UI: home page**           | The page opens, the hero banner renders, and "Shop Mattress" navigates correctly.                                                                                                     |
+| **UI: mattress PDP**        | The right product opens, the default size and price show, and a different size can be selected.                                                                                       |
+| **UI: add to cart**         | The upsell popup is handled, the item is added (API call + header counter), and the cart shows the right name, size, price, quantity and total.                                       |
+| **UI: header (mattresses)** | The mattress mega menu (3 product cards, "Shop All Mattresses"), the top-level "Mattresses" link, the logo and the cart icon.                                                         |
+| **Cross-cutting**           | User-Agent `E2EUI-Tests` from the browser and `E2EUI-Tests-Brands-CI` on API calls, overlays (cookie banner, promo popup) handled centrally, Allure + HTML reports, CI on every push. |
 
 **Environment:** QA only: UI `https://qa.awarasleep.com`, API `https://api.qa-env.residenthome.com`.
 **Browser:** desktop Chromium 1440×900 (the viewport the exploration used).
@@ -141,15 +141,15 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 **Automated (33 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
 07 (×3), 08, 09, 12, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 16,
-21, 22, 25, 26.
+21, 22 (its second step also covers UI-24, the empty cart page), 25, 26.
 
 **Not automated:**
 
-| ID                    | Why                                                                                             |
-| --------------------- | ----------------------------------------------------------------------------------------------- |
-| UI-04                 | Cut in the submission review; the popups are still closed by fixtures in every UI test          |
-| UI-18, UI-19, UI-20   | Cut: unstable at 0 retries because of cart page bugs (README findings 3–4, exploration #25–#26) |
-| UI-10, 11, 17, 23, 24 | P3 backlog                                                                                      |
+| ID                  | Why                                                                                             |
+| ------------------- | ----------------------------------------------------------------------------------------------- |
+| UI-04               | Cut in the submission review; the popups are still closed by fixtures in every UI test          |
+| UI-18, UI-19, UI-20 | Cut: unstable at 0 retries because of cart page bugs (README findings 4–5, exploration #25–#26) |
+| UI-10, 11, 17, 23   | P3 backlog                                                                                      |
 
 ## 6. Risks and known issues
 

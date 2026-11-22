@@ -105,6 +105,7 @@ assertions. UI-13 checks "added to the cart" three ways: the add-to-cart API cal
 | `npm run lint` / `npm run lint:fix`       | ESLint + Prettier check / fix                       |
 | `npm run typecheck`                       | TypeScript check                                    |
 | `npm run check:playwright-image`          | Docker image tag matches the installed Playwright   |
+| `npm run test:scripts`                    | Unit tests of the report scripts (`scripts/`)       |
 
 ### Environment variables
 
@@ -141,9 +142,11 @@ lint ──► test (api) ──┐
      └─► test (ui) ───┴─► report ──► publish-report (main and nightly only)
 ```
 
-- **lint:** ESLint, Prettier, TypeScript and the Docker image tag check. Tests run only if it passes.
+- **lint:** ESLint (no warnings allowed), Prettier, TypeScript, the Docker image tag check and the
+  report-script tests. Tests run only if it passes.
 - **test:** API and UI in parallel, in the official Playwright Docker image (the same one the
-  `Dockerfile` uses). 2 workers; 1 retry, and a pass on retry is reported as **flaky**.
+  `Dockerfile` uses). 2 workers; 1 retry, and a pass on retry is reported as **flaky**. A
+  `@known-bug` test that fails for another reason than its bug fails the job.
 - **report:** merges both projects into one Allure report with history and writes a pass / fail /
   flaky / known-bug table to the run's **Summary** tab.
 - **publish-report:** puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/).
@@ -179,10 +182,10 @@ docs/                      exploration, test plan, API overview, CI details, dev
 | Page objects + fixtures; specs import `test` / `expect` only from `src/fixtures` | Specs read like the test plan and hold the assertions; selectors live in one place (ESLint enforces it) |
 | Locators by role / label / test id, no XPath                                     | They read like the page and survive layout changes                                                      |
 | Unexpected API behaviour: assert what it does, add a `finding` note              | The behaviour is documented and guarded; a deliberately red test would just be noise                    |
-| Known site bugs: keep the strict assertion, mark `test.fail()` + `knownBug()`    | The bug stays visible (red in Allure) without failing CI, and the test says when it's fixed             |
+| Known site bugs: keep the strict assertion, mark `test.fail()` + `knownBug()`    | The bug stays visible (red in Allure) without failing CI; any other failure fails CI                    |
 | Popups: block Dynamic Yield scripts, pre-set the cookie consent, handle the rest | They appear at random times and steal clicks; tests stay about behaviour                                |
 | No fixed sleeps; waits on conditions, with long timeouts only for slow loads     | The QA site's buy box and menu can take 20 s or more; waits end as soon as the condition is true        |
-| 2 workers, 1 retry in CI, 0 locally                                              | The shared QA site times out with 3 browsers. A retry never hides a failure: it shows up as flaky       |
+| 2 workers, 1 retry                                                               | The shared QA site times out with 3 browsers. A retry never hides a failure: it shows up as flaky       |
 | Unstable tests are removed, not retried until green                              | A test that fails at random teaches people to ignore red builds                                         |
 | CI and local Docker use the same Playwright image                                | Same OS, browser and fonts; a CI-only failure can be reproduced on any machine                          |
 

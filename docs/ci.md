@@ -30,7 +30,7 @@ lint ──► test (api) ──┐
 
 | Job                   | What it does                                                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lint`                | ESLint, Prettier and TypeScript checks, and the Docker image tag check. Tests only start if this passes.                                               |
+| `lint`                | ESLint (no warnings allowed), Prettier and TypeScript checks, the Docker image tag check and the report-script tests. Tests only start if this passes. |
 | `test (api)` / `(ui)` | One job per project, in parallel, both in the Playwright Docker image ([Running in Docker](development.md#running-in-docker)). Both always finish.     |
 | `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky / known bug counts to the run's **Summary** tab |
 | `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)                           |
@@ -48,8 +48,10 @@ Download from the run page → **Artifacts** (kept 14 days), or `gh run download
 
 ## Other rules
 
-- **Retries:** 1 in CI, 0 locally. A test that passes only on the retry is counted as **flaky** in the
-  summary, so it stays visible.
+- **Retries:** 1, in CI and locally. A test that passes only on the retry is counted as **flaky** in
+  the summary, so it stays visible.
+- **Known bugs:** a `@known-bug` test that fails for another reason than its bug (its message lacks
+  the `expectedError` from `knownBug()`) fails the test job (`mark-known-bugs.mjs --strict`).
 - **Cancelling:** a newer push to the same branch cancels the older run. On `main`, pushes and the
   nightly run share one queue so they don't overwrite each other's report history: a push cancels
   a run in progress, a nightly waits for it. Manual runs are never cancelled.
