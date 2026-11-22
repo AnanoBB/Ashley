@@ -157,8 +157,10 @@ tests/
   title filter; `--pass-with-no-tests` when set). Manual: Actions tab → CI → Run workflow, or
   `gh workflow run ci.yml --ref <branch> -f project=ui -f grep=@smoke`. Runs code already on GitHub;
   uncommitted changes can only run locally.
-- Concurrency: push/PR runs cancel older runs on the same branch; nightly and manual runs have their
-  own group and are never cancelled.
+- Concurrency: push/PR runs cancel older runs on the same branch. Push to `main` and nightly share
+  one group (`publish-main`) so they never publish the Allure history at the same time: a push
+  cancels a run in progress, a nightly waits (a newer pending run replaces an older pending one).
+  Manual runs get a group per run and are never cancelled.
 - Publishing to Pages and Allure history: only push to `main` and nightly (`PUBLISH` env), so a
   filtered manual run never replaces the full report.
 - Jobs: `lint` (lint + typecheck) → `test` matrix (`api`, `ui`; fail-fast false; Chromium only

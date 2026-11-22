@@ -20,10 +20,17 @@ on:
         type: string
         required: false
 
-# Push and PR runs: a newer commit on the same branch cancels the run still in progress.
-# Nightly and manual runs get their own group and are never cancelled.
+# - Push to main and nightly share one group, so two runs never restore and publish the Allure
+#   history at the same time. A push cancels a run in progress; a nightly waits for it.
+# - Other push and PR runs: a newer commit on the same branch cancels the older run.
+# - Manual runs get a group per run, so they are never cancelled or queued.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: >-
+    ${{ github.workflow }}-${{
+      (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')) && 'publish-main' ||
+      github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) ||
+      format('{0}-{1}', github.event_name, github.event.pull_request.number || github.ref)
+    }}
   cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 permissions:

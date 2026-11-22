@@ -285,8 +285,9 @@ Download from the run page → **Artifacts** (kept 14 days), or `gh run download
 
 - **Retries:** 1 in CI, 0 locally. A test that passes only on the retry is counted as **flaky** in the
   summary, so it stays visible.
-- **Cancelling:** a newer push to the same branch cancels the older run. Nightly and manual runs are
-  never cancelled.
+- **Cancelling:** a newer push to the same branch cancels the older run. On `main`, pushes and the
+  nightly run share one queue so they don't overwrite each other's report history: a push cancels
+  a run in progress, a nightly waits for it. Manual runs are never cancelled.
 - **Allure history:** push-to-`main` and nightly runs download the previous `history.jsonl` from the
   published report and publish the updated one, so the report shows trends over time.
 - **Notifications:** GitHub emails you when a run you started fails, and the nightly failure goes to
