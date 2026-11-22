@@ -13,12 +13,15 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  REPORT_URL: https://ananobb.github.io/Ashley
+
 jobs:
-  tests:
+  lint:
     # Every commit is already tested by the push event, so only run pull_request for PRs from forks.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
 
@@ -36,19 +39,100 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+  test:
+    name: test (${{ matrix.project }})
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # Let both projects finish so one failing project doesn't hide the other's results.
+      fail-fast: false
+      matrix:
+        project: [api, ui]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Install Playwright Chromium
+        if: matrix.project == 'ui'
         run: npx playwright install --with-deps chromium
 
-      # One run for both projects keeps a single HTML report; failing API tests don't stop the UI tests.
-      - name: Run API and UI tests
-        run: npm test
+      - name: Run ${{ matrix.project }} tests
+        run: npx playwright test --project=${{ matrix.project }}
+
+      - name: Upload Allure results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: allure-results-${{ matrix.project }}
+          path: allure-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright HTML report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-${{ matrix.project }}
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload test results (traces, videos, screenshots)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.project }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    needs: [lint, test]
+    # Report even when tests fail, but not when lint failed (then no tests ran).
+    if: ${{ !cancelled() && needs.lint.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Merge Allure results from all projects
+        uses: actions/download-artifact@v8
+        with:
+          pattern: allure-results-*
+          path: allure-results
+          merge-multiple: true
+
+      # History is kept only for main, so trends compare main runs with each other.
+      - name: Restore Allure history from the published report
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: curl -fsSL "$REPORT_URL/history.jsonl" -o history.jsonl || echo "No previous history, starting a new one."
 
       - name: Generate Allure report
-        if: ${{ !cancelled() && hashFiles('allure-results/*-result.json') != '' }}
         run: npm run allure:generate
 
+      - name: Keep the history with the report
+        run: if [ -f history.jsonl ]; then cp history.jsonl allure-report/; fi
+
+      - name: Write test summary
+        run: node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload Allure report
-        if: ${{ !cancelled() && hashFiles('allure-report/index.html') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: allure-report
@@ -56,35 +140,15 @@ jobs:
           retention-days: 14
 
       - name: Upload Allure report for GitHub Pages
-        if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' && hashFiles('allure-report/index.html') != '' }}
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v5
         with:
           path: allure-report/
 
-      - name: Upload Playwright HTML report
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-report
-          path: playwright-report/
-          if-no-files-found: ignore
-          retention-days: 14
-
-      - name: Upload raw test results
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: test-results
-          path: |
-            allure-results/
-            test-results/
-          if-no-files-found: ignore
-          retention-days: 14
-
   publish-report:
-    needs: tests
+    needs: report
     # Publish the latest main report even when tests fail, so the failure can be read online.
-    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    if: ${{ !cancelled() && needs.report.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

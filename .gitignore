@@ -16,3 +16,6 @@ allure-report/
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Allure history (kept in CI with the published report)
+history.jsonl
