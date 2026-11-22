@@ -41,7 +41,8 @@ test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
     knownBug(
       1,
       'hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
-      'toHaveURL',
+      // The URL the bug lands on (the `Received:` line), so a dead link or a 404 doesn't match.
+      '/mattresses/essential-latex-hybrid-mattress"',
     ),
     async ({ page, homePage }) => {
       await test.step('Open the home page', () => homePage.goto());

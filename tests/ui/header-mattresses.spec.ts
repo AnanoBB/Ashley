@@ -86,7 +86,8 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
 
   test.fail(
     'UI-09 header "Mattresses" link opens the mattress listing',
-    knownBug(13, 'the link opens /mattress (one product), not /mattresses', 'toHaveURL'),
+    // `/mattress"` is the URL the bug lands on; the expected `/mattresses"` doesn't contain it.
+    knownBug(13, 'the link opens /mattress (one product), not /mattresses', '/mattress"'),
     async ({ page, homePage }) => {
       await test.step('Click "Mattresses" in the header', () =>
         homePage.header.mattressesLink.click());

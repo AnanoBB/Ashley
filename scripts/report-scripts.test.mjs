@@ -1,0 +1,107 @@
+// Checks how mark-known-bugs.mjs and ci-summary.mjs classify results: they decide whether a run
+// is red or green. Run with `npm run test:scripts`.
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, test } from 'node:test';
+import assert from 'node:assert/strict';
+
+const scripts = import.meta.dirname;
+let dir;
+
+afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+const BUG_LABELS = [
+  { name: 'tag', value: '@known-bug' },
+  { name: 'expectedError', value: '/mattress"' },
+];
+
+/** Writes Allure results; each is { id, name, status, message?, labels?, stop? }. */
+function writeResults(results) {
+  dir = mkdtempSync(join(tmpdir(), 'allure-results-'));
+  for (const { id, message, labels = [], stop = 1, ...rest } of results) {
+    const result = {
+      historyId: rest.name,
+      ...rest,
+      stop,
+      labels: [{ name: 'parentSuite', value: 'ui' }, ...labels],
+      statusDetails: message ? { message } : {},
+    };
+    writeFileSync(join(dir, `${id}-result.json`), JSON.stringify(result));
+  }
+}
+
+function run(script, ...args) {
+  return spawnSync(process.execPath, [join(scripts, script), dir, ...args], { encoding: 'utf8' });
+}
+
+function read(id) {
+  return JSON.parse(readFileSync(join(dir, `${id}-result.json`), 'utf8'));
+}
+
+const knownBugLabel = (result) => result.labels.find((label) => label.name === 'knownBug')?.value;
+
+test('mark-known-bugs classifies each known-bug outcome', () => {
+  writeResults([
+    // test.fail() test that failed with the bug: Playwright and Allure report it as passed.
+    {
+      id: 'a',
+      name: 'expected',
+      status: 'passed',
+      labels: BUG_LABELS,
+      message: 'Received: "x/mattress"',
+    },
+    { id: 'b', name: 'other', status: 'passed', labels: BUG_LABELS, message: 'Received: "x/"' },
+    { id: 'c', name: 'fixed', status: 'failed', labels: BUG_LABELS },
+    { id: 'd', name: 'normal', status: 'passed' },
+  ]);
+
+  const { status } = run('mark-known-bugs.mjs');
+
+  assert.equal(status, 0, 'without --strict the script never fails');
+  assert.deepEqual(
+    [read('a'), read('b'), read('c')].map((result) => [result.status, knownBugLabel(result)]),
+    [
+      ['failed', 'expected-failure'],
+      ['broken', 'unexpected-failure'],
+      ['failed', 'no-longer-reproduces'],
+    ],
+  );
+  assert.equal(knownBugLabel(read('d')), undefined);
+});
+
+test('mark-known-bugs --strict exits 1 only for a failure other than the bug', () => {
+  writeResults([
+    { id: 'a', name: 'expected', status: 'passed', labels: BUG_LABELS, message: 'x/mattress"' },
+  ]);
+  assert.equal(run('mark-known-bugs.mjs', '--strict').status, 0);
+
+  writeResults([{ id: 'b', name: 'other', status: 'passed', labels: BUG_LABELS, message: 'x/"' }]);
+  const { status, stderr } = run('mark-known-bugs.mjs', '--strict');
+  assert.equal(status, 1);
+  assert.match(stderr, /other: Known-bug test failed for another reason/);
+});
+
+test('ci-summary counts the last attempt, flaky retries and known bugs', () => {
+  writeResults([
+    { id: 'a1', name: 'retried', status: 'failed', stop: 1 },
+    { id: 'a2', name: 'retried', status: 'passed', stop: 2 },
+    { id: 'b', name: 'ok', status: 'passed' },
+    {
+      id: 'c',
+      name: 'bug',
+      status: 'failed',
+      labels: [{ name: 'knownBug', value: 'expected-failure' }],
+    },
+    { id: 'd', name: 'broken one', status: 'broken' },
+  ]);
+
+  const { stdout } = run('ci-summary.mjs');
+
+  // Columns: passed | failed | broken | skipped | flaky | known bug
+  assert.match(stdout, /\| ui \| 1 \| 0 \| 1 \| 0 \| 1 \| 1 \|/);
+  assert.match(stdout, /- \*\*flaky\*\* `ui` retried/);
+  assert.match(stdout, /- \*\*broken\*\* `ui` broken one/);
+  assert.match(stdout, /- \*\*known bug\*\* `ui` bug/);
+});

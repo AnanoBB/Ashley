@@ -7,6 +7,8 @@
 // the Allure categories and scripts/ci-summary.mjs match on. A known-bug test that failed for
 // another reason (its message lacks the `expectedError` label from knownBug(), e.g. a page error or
 // a broken locator) is marked "broken", so it shows as a test problem instead of the known bug.
+// With --strict (the CI test job) it also exits 1 then: Playwright counts any failure of a
+// test.fail() test as a pass, so without this the job would stay green.
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -16,8 +18,11 @@ const NO_LONGER_REPRODUCES =
 
 const UNEXPECTED_FAILURE_PREFIX = 'Known-bug test failed for another reason than the bug: ';
 
-const dir = process.argv[2] ?? 'allure-results';
+const args = process.argv.slice(2);
+const strict = args.includes('--strict');
+const dir = args.find((arg) => !arg.startsWith('--')) ?? 'allure-results';
 let marked = 0;
+let unexpected = 0;
 
 if (!existsSync(dir)) {
   console.log(`No ${dir}/ folder: nothing to mark.`);
@@ -41,6 +46,8 @@ for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json
     result.status = 'broken';
     result.statusDetails.message = UNEXPECTED_FAILURE_PREFIX + message;
     result.labels.push({ name: 'knownBug', value: 'unexpected-failure' });
+    unexpected += 1;
+    console.error(`${result.name}: ${UNEXPECTED_FAILURE_PREFIX}${message.split('\n')[0]}`);
   } else if (result.status === 'passed' && message) {
     result.status = 'failed';
     result.statusDetails.message = KNOWN_BUG_PREFIX + message;
@@ -56,3 +63,6 @@ for (const file of readdirSync(dir).filter((name) => name.endsWith('-result.json
 }
 
 console.log(`Marked ${marked} known-bug result(s) in ${dir}.`);
+if (strict && unexpected > 0) {
+  process.exitCode = 1;
+}
