@@ -1,6 +1,8 @@
 import { defineConfig } from '@playwright/test';
 import { env } from './src/config/env';
 
+const VIEWPORT = { width: 1440, height: 900 };
+
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
@@ -8,8 +10,9 @@ export default defineConfig({
   // time out on page loads; 2 is both stable and faster.
   workers: 2,
   forbidOnly: env.isCI,
-  // One retry in CI absorbs a rare QA-env hiccup; the run summary still counts it as flaky.
-  retries: env.isCI ? 1 : 0,
+  // One retry absorbs a rare QA-env hiccup (slow page loads), locally as in CI; the HTML report
+  // and the CI run summary still show a test that passed on retry as flaky.
+  retries: 1,
   reporter: [
     ['list'],
     ['html', { open: 'never' }],
@@ -22,7 +25,7 @@ export default defineConfig({
           API_URL: env.apiUrl,
           UI_USER_AGENT: env.uiUserAgent,
           API_USER_AGENT: env.apiUserAgent,
-          Browser: 'Chromium (desktop, 1440x900)',
+          Browser: `Chromium (desktop, ${VIEWPORT.width}x${VIEWPORT.height})`,
           Node: process.version,
         },
       },
@@ -49,7 +52,7 @@ export default defineConfig({
         baseURL: env.baseUrl,
         userAgent: env.uiUserAgent,
         browserName: 'chromium',
-        viewport: { width: 1440, height: 900 },
+        viewport: VIEWPORT,
         screenshot: 'only-on-failure',
         video: 'retain-on-failure',
       },
