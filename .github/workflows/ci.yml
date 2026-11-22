@@ -3,18 +3,36 @@ name: CI
 on:
   push:
   pull_request:
+  # Nightly full regression on main (03:00 UTC): all tests, API + UI, no filter. It publishes the
+  # report, so it stays fresh without commits.
+  schedule:
+    - cron: '0 3 * * *'
+  # Manual run from the Actions tab ("Run workflow") or `gh workflow run ci.yml`, on any branch.
   workflow_dispatch:
+    inputs:
+      project:
+        description: Which tests to run
+        type: choice
+        options: [all, api, ui]
+        default: all
+      grep:
+        description: 'Optional filter by tag or title, e.g. @smoke, @negative, UI-13'
+        type: string
+        required: false
 
-# A newer commit on the same branch or PR cancels the run that is still in progress.
+# Push and PR runs: a newer commit on the same branch cancels the run still in progress.
+# Nightly and manual runs get their own group and are never cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 env:
   REPORT_URL: https://ananobb.github.io/Ashley
+  # Push to main and the nightly run publish the report and keep the Allure history.
+  PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') }}
 
 jobs:
   lint:
@@ -48,7 +66,8 @@ jobs:
       # Let both projects finish so one failing project doesn't hide the other's results.
       fail-fast: false
       matrix:
-        project: [api, ui]
+        # Both projects, unless a manual run picked one.
+        project: ${{ fromJSON(inputs.project == 'api' && '["api"]' || inputs.project == 'ui' && '["ui"]' || '["api","ui"]') }}
     steps:
       - uses: actions/checkout@v7
 
@@ -65,7 +84,10 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run ${{ matrix.project }} tests
-        run: npx playwright test --project=${{ matrix.project }}
+        env:
+          GREP: ${{ inputs.grep }}
+        # A filter may match only one project; the other then has no tests, which is fine.
+        run: npx playwright test --project="${{ matrix.project }}" ${GREP:+--grep "$GREP" --pass-with-no-tests}
 
       - name: Upload Allure results
         if: ${{ !cancelled() }}
@@ -120,7 +142,7 @@ jobs:
 
       # History is kept only for main, so trends compare main runs with each other.
       - name: Restore Allure history from the published report
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: env.PUBLISH == 'true'
         run: curl -fsSL "$REPORT_URL/history.jsonl" -o history.jsonl || echo "No previous history, starting a new one."
 
       - name: Generate Allure report
@@ -130,7 +152,14 @@ jobs:
         run: if [ -f history.jsonl ]; then cp history.jsonl allure-report/; fi
 
       - name: Write test summary
-        run: node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+        env:
+          TRIGGER: ${{ github.event_name }}
+          BRANCH: ${{ github.ref_name }}
+          PROJECT: ${{ inputs.project || 'all' }}
+          GREP: ${{ inputs.grep }}
+        run: |
+          echo "**Trigger:** $TRIGGER on \`$BRANCH\` · **Projects:** $PROJECT${GREP:+ · **Filter:** \`$GREP\`}" >> "$GITHUB_STEP_SUMMARY"
+          node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Allure report
         uses: actions/upload-artifact@v7
@@ -140,7 +169,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Allure report for GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: env.PUBLISH == 'true'
         uses: actions/upload-pages-artifact@v5
         with:
           path: allure-report/
@@ -148,7 +177,8 @@ jobs:
   publish-report:
     needs: report
     # Publish the latest main report even when tests fail, so the failure can be read online.
-    if: ${{ !cancelled() && needs.report.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    # Push to main and the nightly run publish; filtered manual runs must not replace the full report.
+    if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
