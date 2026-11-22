@@ -42,8 +42,8 @@ ESLint (type-aware, `--max-warnings 0`) + Prettier. CI test jobs and the local `
 Playwright MCP (`.mcp.json`) is for exploring the app only, never in CI.
 
 Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, utils, config),
-`tests/api`, `tests/ui`, `scripts/` (CI summary, known-bug marking, image tag check), `docs/`
-(exploration, test plan, API overview). Config: `playwright.config.ts`, `allurerc.mjs`,
+`tests/api`, `tests/ui`, `scripts/` (CI summary, known-bug marking, image tag check, and
+`report-scripts.test.mjs`), `docs/` (exploration, test plan, API overview). Config: `playwright.config.ts`, `allurerc.mjs`,
 `.env.example` (keep in sync; `.env` is not committed).
 
 ## Conventions

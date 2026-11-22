@@ -161,7 +161,7 @@ described in [docs/ci.md](docs/ci.md).
 ```
 .github/workflows/ci.yml   CI pipeline          playwright.config.ts  projects, User-Agents, reporters
 allurerc.mjs               Allure categories    .env.example          optional settings
-Dockerfile                 local Docker runs    scripts/              CI summary, known-bug marking, image check
+Dockerfile                 local Docker runs    scripts/              CI summary, known-bug marking, image check, their tests
 
 src/config/env.ts          URLs and User-Agents, from env vars with defaults
 src/api/, api/schemas/     API clients (return the raw response) and zod schemas
