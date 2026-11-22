@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Page, Response } from '@playwright/test';
 import { Header } from '../components/Header';
 
 export abstract class BasePage {
@@ -11,8 +11,9 @@ export abstract class BasePage {
   /**
    * Waits for DOMContentLoaded only: the `load` event depends on dozens of third-party scripts
    * and can take over a minute. Each page then waits for its own readiness signal.
+   * Returns the document response, so a test can check the HTTP status.
    */
-  protected async open(path: string): Promise<void> {
-    await this.page.goto(path, { waitUntil: 'domcontentloaded' });
+  protected open(path: string): Promise<Response | null> {
+    return this.page.goto(path, { waitUntil: 'domcontentloaded' });
   }
 }

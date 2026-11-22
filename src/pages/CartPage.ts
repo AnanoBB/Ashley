@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import type { Locator, Page, Response } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 /** Test ids embed the product title with spaces replaced by underscores. */
@@ -39,6 +39,17 @@ export class CartPage extends BasePage {
 
   async goto(): Promise<void> {
     await this.open('/checkout/cart');
+  }
+
+  /**
+   * Waits for the page's own cart request (`GET {API_URL}/carts/my`), after which the header
+   * counter and the cart content reflect the server's cart. Start it before navigating.
+   */
+  waitForCartLoad(): Promise<Response> {
+    return this.page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/carts/my' && response.request().method() === 'GET',
+    );
   }
 
   item(productTitle: string): CartLineItem {

@@ -26,21 +26,28 @@ test.describe('Products API: negative cases', { tag: ['@api', '@regression', '@n
   const unusualNames = [
     { case: 'SQL-like characters', name: "' OR 1=1--" },
     { case: '3000 characters', name: 'a'.repeat(3000) },
-    { case: 'an empty value', name: '' },
+    {
+      case: 'an empty value',
+      name: '',
+      finding: 'an empty name matches nothing instead of being ignored like an absent filter',
+    },
   ];
 
-  for (const { case: label, name } of unusualNames) {
-    test(`API-11 a name with ${label} returns an empty list, not an error`, async ({
-      productsApi,
-    }) => {
-      const response = await test.step(`GET /products with a name of ${label}`, () =>
-        productsApi.getProducts({ name, lang: 'en', brand: BRAND }));
+  for (const { case: label, name, finding } of unusualNames) {
+    const details = finding ? { annotation: { type: 'finding', description: finding } } : {};
+    test(
+      `API-11 a name with ${label} returns an empty list, not an error`,
+      details,
+      async ({ productsApi }) => {
+        const response = await test.step(`GET /products with a name of ${label}`, () =>
+          productsApi.getProducts({ name, lang: 'en', brand: BRAND }));
 
-      const body = await expectProducts(response);
+        const body = await expectProducts(response);
 
-      await test.step('result.data is empty', () => {
-        expect(body.result.data).toEqual([]);
-      });
-    });
+        await test.step('result.data is empty', () => {
+          expect(body.result.data).toEqual([]);
+        });
+      },
+    );
   }
 });

@@ -74,28 +74,59 @@ export class ProductPage extends BasePage {
   /**
    * Clicks Add to Cart, declines the upgrade upsell ("Upgrade to Certified Organic/Premier") when
    * it is shown (A/B driven, not on every visit) and waits for the app to route to the cart.
-   * Declining is retried as a real click so overlay handlers (promo popup, cookie banner) that
-   * stack on top of the upsell are dismissed first. Resolves with the add-to-cart API response.
+   * Resolves with the add-to-cart API response.
    */
-  async addToCart(): Promise<AddToCartResult> {
-    const addRequest = this.page.waitForResponse(
-      (response) =>
-        response.url().includes('/carts/my/items') && response.request().method() === 'POST',
-      { timeout: ADD_TO_CART_TIMEOUT },
+  addToCart(): Promise<AddToCartResult> {
+    return this.submitAddToCart(() => this.isOnCartPage(), 'routed to /checkout/cart');
+  }
+
+  /**
+   * Like addToCart, but done as soon as the add-to-cart request has a response, without expecting
+   * the app to route to the cart (for tests where the request fails).
+   */
+  tryAddToCart(): Promise<AddToCartResult> {
+    let responded = false;
+    return this.submitAddToCart(
+      () => responded,
+      'add-to-cart request answered',
+      () => {
+        responded = true;
+      },
     );
+  }
+
+  /**
+   * When the upsell is shown, the request is sent only once it is declined. Declining is
+   * retried as a real click so overlay handlers (cookie banner) that stack on top of it run first.
+   */
+  private async submitAddToCart(
+    isDone: () => boolean,
+    doneMessage: string,
+    onResponse?: () => void,
+  ): Promise<AddToCartResult> {
+    const addRequest = this.page
+      .waitForResponse(
+        (response) =>
+          response.url().includes('/carts/my/items') && response.request().method() === 'POST',
+        { timeout: ADD_TO_CART_TIMEOUT },
+      )
+      .then((response) => {
+        onResponse?.();
+        return response;
+      });
     let upsellDeclined = false;
-    const routedToCart = async (): Promise<void> => {
+    const clickFlow = async (): Promise<void> => {
       await this.addToCartButton.click();
       await expect(async () => {
-        if (!this.isOnCartPage()) {
+        if (!isDone()) {
           await this.upsellNoThanks.click({ timeout: 2_000 });
           upsellDeclined = true;
         }
-        expect(this.isOnCartPage(), 'routed to /checkout/cart').toBe(true);
+        expect(isDone(), doneMessage).toBe(true);
       }).toPass({ timeout: ADD_TO_CART_TIMEOUT });
     };
     // Awaited together so a failed click flow doesn't leave the response wait rejecting unhandled.
-    const [response] = await Promise.all([addRequest, routedToCart()]);
+    const [response] = await Promise.all([addRequest, clickFlow()]);
     return { response, upsellDeclined };
   }
 
