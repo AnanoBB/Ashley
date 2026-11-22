@@ -126,7 +126,8 @@ tests/
 - API clients are thin and typed, use Playwright `request` with `params` (no string-built URLs),
   and return the raw `APIResponse`. Assertions live in tests.
 - Every API test goes through `tests/api/support.ts`: `expectProducts` (200 → JSON Content-Type →
-  products schema) or `expectApiError` (expected 4xx → JSON → error schema), then its own assertions.
+  products schema), `expectApiError` (expected 4xx → JSON → error schema) or `expectTextError`
+  (expected status → text/plain, e.g. 405), then its own assertions.
 - When the API behaves differently from what we'd expect, assert the actual behaviour and add a
   `finding` annotation; don't leave a test red on purpose.
 

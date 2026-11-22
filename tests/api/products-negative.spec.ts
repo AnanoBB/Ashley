@@ -1,5 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { expectApiError, expectProducts } from './support';
+import { expectApiError, expectProducts, expectTextError } from './support';
 
 const BRAND = 'awara';
 
@@ -51,9 +51,10 @@ test.describe('Products API: negative cases', { tag: ['@api', '@regression', '@n
       const response = await test.step(`${method} /products?brand=${BRAND}`, () =>
         productsApi.sendProducts(method, { brand: BRAND }));
 
-      await test.step('Response status is 405 and only GET is allowed', async () => {
-        expect(response.status(), `Unexpected status for ${method} ${response.url()}`).toBe(405);
-        expect(await response.text()).toContain('Defined methods: GET');
+      const text = await expectTextError(response, 405);
+
+      await test.step('Only GET is allowed', () => {
+        expect(text).toContain('Defined methods: GET');
       });
     });
   }
