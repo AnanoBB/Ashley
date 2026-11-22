@@ -3,7 +3,7 @@
 QA automation home assignment built with **Playwright Test + TypeScript**, with **Allure** reporting
 and **GitHub Actions** CI.
 
-> **Current phase: 1 (API).** The UI tests will be added in phase 2.
+**Latest test report (Allure, from `main`):** https://ananobb.github.io/Ashley/
 
 ## What is tested
 
