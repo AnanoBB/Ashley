@@ -75,8 +75,7 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
     mattressCatalog,
   }) => {
     await test.step('Open the menu and click "Shop All Mattresses"', async () => {
-      await homePage.header.openMattressesMenu();
-      await homePage.header.shopAllMattresses.click();
+      await homePage.header.clickShopAllMattresses();
     });
 
     await test.step('Listing shows every mattress', async () => {
