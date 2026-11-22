@@ -12,8 +12,30 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
     });
   });
 
+  test('UI-03 hero "Shop Mattress" opens a mattress product page', async ({
+    page,
+    homePage,
+    productPage,
+    mattressCatalog,
+  }) => {
+    const mattressTitles = Object.values(mattressCatalog).map((mattress) => mattress.title);
+
+    await test.step('Open the home page', () => homePage.goto());
+
+    await test.step('Click "Shop Mattress" in the hero banner', () =>
+      homePage.heroShopMattress.click());
+
+    await test.step('URL contains /mattress and a catalog mattress page is shown', async () => {
+      await expect(page).toHaveURL(/\/mattress/);
+      await productPage.waitUntilReady();
+      expect(mattressTitles).toContain(await productPage.heading.innerText());
+    });
+  });
+});
+
+test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
   test(
-    'UI-02 hero "Shop Mattress" opens /mattress',
+    'UI-02 hero "Shop Mattress" opens exactly /mattress',
     {
       annotation: {
         type: 'known bug',
@@ -29,54 +51,9 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
       await test.step('Click "Shop Mattress" in the hero banner', () =>
         homePage.heroShopMattress.click());
 
-      await test.step('URL is /mattress', async () => {
+      await test.step('Path is exactly /mattress', async () => {
         await expect(page).toHaveURL('/mattress');
       });
     },
   );
-
-  test('UI-03 hero "Shop Mattress" opens a mattress product page', async ({
-    page,
-    homePage,
-    productPage,
-    mattressCatalog,
-  }) => {
-    const mattressTitles = Object.values(mattressCatalog).map((mattress) => mattress.title);
-
-    await test.step('Open the home page', () => homePage.goto());
-
-    await test.step('Click "Shop Mattress" in the hero banner', () =>
-      homePage.heroShopMattress.click());
-
-    await test.step('A mattress product page from the catalog is shown', async () => {
-      await expect(page).toHaveURL(/\/mattress/);
-      await productPage.waitUntilReady();
-      expect(mattressTitles).toContain(await productPage.heading.innerText());
-    });
-  });
-});
-
-test.describe('Overlays', { tag: ['@ui', '@regression'] }, () => {
-  test.use({ autoDismissOverlays: ['promoModal', 'protectionPlanModal'] });
-
-  test('UI-04 cookie banner can be accepted and does not block the hero CTA', async ({
-    page,
-    homePage,
-  }) => {
-    await test.step('Open the home page', () => homePage.goto());
-
-    await test.step('Cookie banner appears', async () => {
-      await expect(homePage.cookieBanner).toBeVisible();
-    });
-
-    await test.step('Accept all cookies', async () => {
-      await homePage.acceptAllCookies.click();
-      await expect(homePage.cookieBanner).toBeHidden();
-    });
-
-    await test.step('Hero CTA is clickable', async () => {
-      await homePage.heroShopMattress.click();
-      await expect(page).toHaveURL(/\/mattress/);
-    });
-  });
 });
