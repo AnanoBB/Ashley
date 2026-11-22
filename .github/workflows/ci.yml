@@ -39,8 +39,6 @@ permissions:
   contents: read
 
 env:
-  # GitHub Pages URL of this repo (also right on a fork).
-  REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
   # Push to main and the nightly run publish the report and keep the Allure history.
   PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') }}
 
@@ -176,7 +174,9 @@ jobs:
       # History is kept only for main, so trends compare main runs with each other.
       - name: Restore Allure history from the published report
         if: env.PUBLISH == 'true'
-        run: curl -fsSL "$REPORT_URL/history.jsonl" -o history.jsonl || echo "No previous history, starting a new one."
+        # The repo's Pages URL, from GITHUB_REPOSITORY (set on every event, also on a fork; the
+        # schedule event has no github.event.repository).
+        run: curl -fsSL "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/history.jsonl" -o history.jsonl || echo "No previous history, starting a new one."
 
       - name: Generate Allure report
         run: npm run allure:generate
