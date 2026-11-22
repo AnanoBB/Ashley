@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--user-agent",
+        "E2EUI-Tests"
+      ],
+      "env": {}
+    }
+  }
+}
