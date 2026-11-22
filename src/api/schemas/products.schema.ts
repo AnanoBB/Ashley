@@ -4,8 +4,8 @@ import { z } from 'zod';
 // and the product list lives at `result.data` (the assignment calls it `status.result.data`).
 
 const MoneySchema = z.object({
-  amount: z.number(),
-  currency: z.string(),
+  amount: z.number().int().nonnegative(), // cents
+  currency: z.string().min(1),
 });
 
 const PricingSchema = z
@@ -24,7 +24,7 @@ export const ProductSchema = z
     title: z.string(),
     type: z.string(),
     isService: z.enum(['true', 'false']),
-    brand: z.string(),
+    brand: z.string().min(1),
     description: z.string(),
     inventoryKey: z.string(),
     extras: z.array(z.unknown()),

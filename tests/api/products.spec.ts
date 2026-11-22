@@ -1,43 +1,70 @@
 import { test, expect } from '../../src/fixtures';
-import {
-  ProductsResponseSchema,
-  type ProductsResponse,
-} from '../../src/api/schemas/products.schema';
+import { expectProducts } from './support';
 
 const BRAND = 'awara';
 const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
 
-test.describe('Products API', { tag: ['@api', '@smoke'] }, () => {
-  test('GET /products by brand returns a non-empty list', async ({ productsApi }) => {
+test.describe('Products API: assignment', { tag: ['@api', '@smoke'] }, () => {
+  test('API-01 GET /products by brand returns a non-empty list of that brand', async ({
+    productsApi,
+  }) => {
     const response = await test.step(`GET /products?brand=${BRAND}`, () =>
       productsApi.getProducts({ brand: BRAND }));
 
-    await test.step('Response status is 200', () => {
-      expect(response.status(), `Unexpected status for ${response.url()}`).toBe(200);
-    });
-
-    const body: ProductsResponse = await test.step('Body matches the products schema', async () =>
-      ProductsResponseSchema.parse(await response.json()));
+    const body = await expectProducts(response);
 
     await test.step('result.data length is greater than 0', () => {
       expect(body.result.data.length).toBeGreaterThan(0);
     });
+
+    await test.step(`Every product has brand "${BRAND}"`, () => {
+      const otherBrands = body.result.data
+        .filter((product) => product.brand !== BRAND)
+        .map((product) => `${product.name} (${product.brand})`);
+      expect(otherBrands, 'products of another brand').toEqual([]);
+    });
   });
 
-  test('GET /products by name returns exactly one product', async ({ productsApi }) => {
+  test('API-02 GET /products by name returns exactly that product', async ({ productsApi }) => {
     const response =
       await test.step(`GET /products?name=${PRODUCT_NAME}&lang=en&brand=${BRAND}`, () =>
         productsApi.getProducts({ name: PRODUCT_NAME, lang: 'en', brand: BRAND }));
 
-    await test.step('Response status is 200', () => {
-      expect(response.status(), `Unexpected status for ${response.url()}`).toBe(200);
-    });
-
-    const body: ProductsResponse = await test.step('Body matches the products schema', async () =>
-      ProductsResponseSchema.parse(await response.json()));
+    const body = await expectProducts(response);
 
     await test.step('result.data length equals 1', () => {
       expect(body.result.data).toHaveLength(1);
+    });
+
+    await test.step(`The product is ${PRODUCT_NAME} of brand "${BRAND}"`, () => {
+      expect(body.result.data[0]).toMatchObject({ name: PRODUCT_NAME, brand: BRAND });
+    });
+  });
+});
+
+test.describe('Products API: consistency', { tag: ['@api', '@regression'] }, () => {
+  test('API-08 the product found by name matches its entry in the brand list', async ({
+    productsApi,
+  }) => {
+    const byName = await test.step(`GET /products?name=${PRODUCT_NAME}&brand=${BRAND}`, async () =>
+      expectProducts(
+        await productsApi.getProducts({ name: PRODUCT_NAME, lang: 'en', brand: BRAND }),
+      ));
+    const byBrand = await test.step(`GET /products?brand=${BRAND}`, async () =>
+      expectProducts(await productsApi.getProducts({ brand: BRAND })));
+
+    await test.step('The brand list has the same product with the same id, name, title and price', () => {
+      const [product] = byName.result.data;
+      const inList = byBrand.result.data.find((candidate) => candidate.id === product.id);
+      expect(inList, `${product.name} (${product.id}) is in the brand list`).toBeDefined();
+      const summary = (p: typeof product) => ({
+        id: p.id,
+        name: p.name,
+        title: p.title,
+        brand: p.brand,
+        price: p.pricing.price,
+      });
+      expect(summary(inList!)).toEqual(summary(product));
     });
   });
 });
