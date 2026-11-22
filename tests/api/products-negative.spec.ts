@@ -35,6 +35,7 @@ test.describe('Products API: negative cases', { tag: ['@api', '@regression', '@n
 
   for (const { case: label, name, finding } of unusualNames) {
     const details = finding ? { annotation: { type: 'finding', description: finding } } : {};
+
     test(
       `API-11 a name with ${label} returns an empty list, not an error`,
       details,

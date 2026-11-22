@@ -79,6 +79,7 @@ test.describe('Products API: filter behaviour', { tag: ['@api', '@regression'] }
       expectProducts(await productsApi.getProducts({ brand: BRAND.toUpperCase() })));
 
     // Lists are capped at 200 items; two truncated lists may hold different products.
+    // eslint-disable-next-line playwright/no-skipped-test -- runtime skip: the data can't be compared
     test.skip(
       [lower, upper].some((body) => body.result.data.length < body.result.total_count),
       'A brand list is truncated (capped at 200 items)',

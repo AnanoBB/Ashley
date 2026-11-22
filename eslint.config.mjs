@@ -22,21 +22,23 @@ export default tseslint.config(
   },
   {
     files: ['**/*.ts'],
+    // Type-aware rules (no-floating-promises, no-misused-promises, await-thenable, no-unsafe-*).
+    extends: [tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
     },
-    rules: {
-      '@typescript-eslint/no-floating-promises': 'error',
-    },
+  },
+  {
+    // Page objects and fixtures too: a waitForTimeout or page.pause() there is as bad as in a spec.
+    files: ['tests/**/*.ts', 'src/**/*.ts'],
+    ...playwright.configs['flat/recommended'],
   },
   {
     files: ['tests/**/*.ts'],
-    ...playwright.configs['flat/recommended'],
     rules: {
-      ...playwright.configs['flat/recommended'].rules,
       'no-restricted-imports': [
         'error',
         {
