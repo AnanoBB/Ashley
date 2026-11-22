@@ -30,10 +30,17 @@
 - [x] Part 2: API tests. 2 tests in `tests/api/products.spec.ts`, passing. They were quarantined
   while Cloudflare returned 403 for `E2EUI-Tests`; the quarantine was lifted after switching to
   `E2EUI-Tests-Brands-CI`.
-- [x] Part 1: UI tests (explored first → `docs/exploration.md`). 21 tests in `tests/ui/`, passing
-  locally and in CI. The assignment flow is the `@smoke` set (UI-01, UI-02, UI-03, UI-13/14/15);
-  the `@regression` extras are under review. Ask before adding or removing UI cases. UI-10, UI-11
-  and UI-17 are unused IDs.
+- [x] Part 1: UI tests (explored first → `docs/exploration.md`). 17 tests in `tests/ui/`, passing
+  locally (0 retries) and in CI. The assignment flow is the `@smoke` set (UI-01, UI-03,
+  UI-13/14/15): "on /mattress" is read as "URL contains /mattress". UI-02 (exact path) is a
+  `@regression` known bug. Reviewed and cut for the submission: UI-04 (cookie banner), UI-18 (add twice:
+  two slow add-to-cart flows, unstable at 0 retries), UI-19/UI-20 (flaky cart +/remove, see README
+  findings 3-4). Ask before adding or removing UI cases. Unused IDs:
+  UI-04, UI-10, UI-11, UI-17, UI-18, UI-19, UI-20.
+- The cart-via-API work for UI-19/UI-20 is in `git stash` ("wip: cart tests via API"). It isn't
+  stable: an API write sent before the page's first `GET /carts/my` can land in a cart the page
+  doesn't use. The cart is chosen by the `authentication` header (decoded `authToken` cookie), not
+  by cookies, so `page.request` alone doesn't fix it.
 - [x] Part 3.3: Allure reporting
 - [x] Part 3.4: GitHub Actions CI/CD + artifacts + Allure on GitHub Pages
 - [x] Part 3.2: README.md (missing items listed under "README must cover")
@@ -77,9 +84,9 @@ tests/
     API request context).
   - Projects: `api` (testDir `tests/api`, baseURL = API_URL) and `ui` (testDir `tests/ui`,
     baseURL = BASE_URL, Chromium, 1440×900, 90 s test timeout, 15 s expect timeout).
-  - `fullyParallel`, 3 workers locally / 2 on CI (the shared QA site slows down with more).
+  - `fullyParallel`, 2 workers everywhere (with 3, tests time out on the shared QA site).
   - Reporters: `list`, `html` (open: never), `allure-playwright` (results in `allure-results/`).
-  - `retries: 2` on CI, 0 locally. `forbidOnly` on CI.
+  - `retries: 1` on CI, 0 locally (the CI summary counts pass-on-retry as flaky). `forbidOnly` on CI.
   - screenshot `only-on-failure`, video `retain-on-failure`, trace `retain-on-failure`.
 - Env vars (`.env`, optional): `BASE_URL` (default https://qa.awarasleep.com), `API_URL` (default
   https://api.qa-env.residenthome.com), `USER_AGENT` (default `E2EUI-Tests-Brands-CI`).
@@ -147,7 +154,8 @@ tests/
 ## Commands
 - `npm ci` / `npx playwright install --with-deps chromium`
 - `npm run lint` (ESLint + Prettier check) / `npm run lint:fix` / `npm run typecheck`
-- `npm test` – all tests; `npm run test:api` / `npm run test:ui` – one project
+- `npm test` – all tests; `npm run test:smoke` – the assignment only; `npm run test:api` /
+  `npm run test:ui` – one project
 - `npx playwright test --grep @smoke` – by tag
 - `npm run test:ui -- --headed --workers=1` – watch UI tests one by one
 - `npm run report:html` – Playwright HTML report
@@ -164,9 +172,10 @@ CI badge + live Allure link, overview, tech stack, prerequisites, install, run c
 (all / API / UI / headed / single test / tag), reports, CI/CD and where to find artifacts,
 structure + design decisions, assumptions and findings (actual `data` path, bugs, Cloudflare and
 the User-Agent), AI usage (short and honest). Every command in it must work in a clean clone.
-Still missing: CI badge, design decisions, AI usage, headed / single-test commands.
+All covered as of 2026-11-22. The "AI usage" section is written in the author's voice: the user owns
+its wording.
 
 ## Planned (not built yet)
 - Allure environment info: base URLs, browser, Node version, User-Agent.
-- Scripts: `format`, `test:smoke`, `allure:serve`.
+- Scripts: `format`, `allure:serve`.
 - Feature branches + PRs to main instead of pushing straight to `main`.
