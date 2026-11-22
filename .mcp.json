@@ -6,7 +6,7 @@
       "args": [
         "@playwright/mcp@latest",
         "--user-agent",
-        "E2EUI-Tests"
+        "E2EUI-Tests-Brands-CI"
       ],
       "env": {}
     }

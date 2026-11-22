@@ -1,5 +1,4 @@
 import { test, expect } from '../../src/fixtures';
-import { env } from '../../src/config/env';
 import {
   ProductsResponseSchema,
   type ProductsResponse,
@@ -8,12 +7,7 @@ import {
 const BRAND = 'awara';
 const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
 
-test.describe('Products API', { tag: ['@api', '@smoke', '@quarantine'] }, () => {
-  test.fixme(
-    !env.runQuarantined,
-    'Quarantined: Cloudflare answers every non-browser request with 403. Run with RUN_QUARANTINED=true.',
-  );
-
+test.describe('Products API', { tag: ['@api', '@smoke'] }, () => {
   test('GET /products by brand returns a non-empty list', async ({ productsApi }) => {
     const response = await test.step(`GET /products?brand=${BRAND}`, () =>
       productsApi.getProducts({ brand: BRAND }));
