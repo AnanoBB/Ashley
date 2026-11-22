@@ -7,5 +7,4 @@ package-lock.json
 CLAUDE.md
 .mcp.json
 .claude/
-docs/*.html
 .playwright-mcp/
