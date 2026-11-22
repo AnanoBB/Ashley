@@ -57,6 +57,7 @@ test.describe('Products API: consistency', { tag: ['@api', '@regression'] }, () 
     });
 
     // Lists are capped at 200 items; a truncated list may not contain the product.
+    // eslint-disable-next-line playwright/no-skipped-test -- runtime skip: the data can't be compared
     test.skip(
       byBrand.result.data.length < byBrand.result.total_count,
       'The brand list is truncated (capped at 200 items)',
