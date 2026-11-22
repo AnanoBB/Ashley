@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Awara Products API</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --text: #1d1d1b; --muted: #6b6b66; --border: #e3e2dd;
+    --accent: #2f5d8a; --code-bg: #f0efea; --ok: #2e7d4f; --ok-bg: #e5f3ea; --bad: #b3261e;
+    --bad-bg: #fbe9e7; --warn: #8a5a00; --warn-bg: #fff4d6; --na: #6b6b66; --na-bg: #eeeeea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a29b; --border: #33322f;
+      --accent: #8db8e3; --code-bg: #2a2a27; --ok: #7fcf9c; --ok-bg: #1f3328; --bad: #f2a29b;
+      --bad-bg: #3a2220; --warn: #f0c96a; --warn-bg: #3a3020; --na: #a3a29b; --na-bg: #2a2a27;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161615; --surface: #1f1f1d; --text: #ecebe6; --muted: #a3a29b; --border: #33322f;
+    --accent: #8db8e3; --code-bg: #2a2a27; --ok: #7fcf9c; --ok-bg: #1f3328; --bad: #f2a29b;
+    --bad-bg: #3a2220; --warn: #f0c96a; --warn-bg: #3a3020; --na: #a3a29b; --na-bg: #2a2a27;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 920px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  h2 { font-size: 20px; margin: 40px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p { margin: 8px 0; }
+  .sub { color: var(--muted); margin: 0 0 24px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  nav a { color: var(--accent); text-decoration: none; font-size: 14px; padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--surface); }
+  code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--code-bg);
+    padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 8px 0; }
+  pre code { padding: 0; background: none; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin: 8px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  tr:last-child td { border-bottom: none; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; margin: 12px 0; }
+  .endpoint { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .method { font: 600 12px ui-monospace, Menlo, monospace; color: var(--ok); background: var(--ok-bg);
+    padding: 3px 8px; border-radius: 4px; }
+  .path { font: 14px ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+  .pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .ok { color: var(--ok); background: var(--ok-bg); }
+  .bad { color: var(--bad); background: var(--bad-bg); }
+  .na { color: var(--na); background: var(--na-bg); }
+  .callout { border-left: 3px solid var(--warn); background: var(--warn-bg); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; }
+  .callout.info { border-color: var(--accent); background: var(--surface); }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin: 4px 0; }
+  .muted { color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Awara Products API</h1>
+  <p class="sub">QA environment · checked 2026-11-21 · shapes from real responses, status codes as observed</p>
+  <nav>
+    <a href="#base">Base URL</a><a href="#auth">Auth</a><a href="#endpoints">Endpoints</a>
+    <a href="#status">Status codes</a><a href="#shape">Response shape</a><a href="#product">Product</a>
+  </nav>
+
+  <h2 id="base">Base URL</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Env</th><th>URL</th><th>Override</th></tr>
+    <tr><td>QA</td><td><code>https://api.qa-env.residenthome.com</code></td><td><code>API_URL</code> env variable</td></tr>
+  </table></div>
+
+  <h2 id="auth">Auth method</h2>
+  <ul>
+    <li><strong>No authentication.</strong> No API key, token or cookie is needed. A plain browser <code>GET</code> returns JSON.</li>
+    <li><strong>Required header (by the assignment):</strong> <code>User-Agent: E2EUI-Tests</code>, set globally in <code>playwright.config.ts</code>.</li>
+  </ul>
+  <div class="callout">
+    <strong>Cloudflare WAF in front of the API.</strong> Non-browser clients (curl, Playwright's request context)
+    get a <strong>403 HTML block page</strong>, whatever the User-Agent is (tested with <code>E2EUI-Tests</code>, no UA, and a Chrome UA).
+    A browser on the same network gets through. Getting the tests through needs a WAF rule on the owner's side
+    (for example, allow UA <code>E2EUI-Tests</code>).
+  </div>
+
+  <h2 id="endpoints">Endpoints</h2>
+  <p>Both are the same resource (<code>/products</code>) with different filters, so they share one response shape.</p>
+
+  <div class="card">
+    <div class="endpoint"><span class="method">GET</span><span class="path">/products?brand={brand}</span></div>
+    <p><strong>List products by brand</strong></p>
+    <div class="table-wrap"><table>
+      <tr><th>Param</th><th>Type</th><th>Required*</th><th>Example</th></tr>
+      <tr><td><code>brand</code></td><td>string</td><td>yes</td><td><code>awara</code></td></tr>
+    </table></div>
+    <p class="muted">Sample: returned <strong>91</strong> products, all <code>brand: "awara"</code>. Assignment check: <code>result.data.length &gt; 0</code>.</p>
+  </div>
+
+  <div class="card">
+    <div class="endpoint"><span class="method">GET</span><span class="path">/products?name={name}&amp;lang={lang}&amp;brand={brand}</span></div>
+    <p><strong>Get a product by name</strong></p>
+    <div class="table-wrap"><table>
+      <tr><th>Param</th><th>Type</th><th>Required*</th><th>Example</th></tr>
+      <tr><td><code>name</code></td><td>string</td><td>yes</td><td><code>the-awara-hybrid-mattress-30</code></td></tr>
+      <tr><td><code>lang</code></td><td>string</td><td>no</td><td><code>en</code></td></tr>
+      <tr><td><code>brand</code></td><td>string</td><td>yes</td><td><code>awara</code></td></tr>
+    </table></div>
+    <p class="muted">Sample: returned exactly <strong>1</strong> product (<code>64e7b25e420000075e9aba89</code>, "Awara Classic Hybrid Mattress"). Assignment check: <code>result.data.length === 1</code>.</p>
+  </div>
+  <p class="muted">* "Required" reflects how the assignment uses the endpoint. Behavior without these params was not observed.</p>
+
+  <h2 id="status">Status codes</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Code</th><th>When</th><th>Body</th><th>Observed</th></tr>
+    <tr><td><span class="pill ok">200</span></td><td>Request reaches the API (browser)</td><td>JSON (see below)</td><td>Yes, both endpoints</td></tr>
+    <tr><td><span class="pill bad">403</span></td><td>Cloudflare WAF blocks a non-browser client (curl / Playwright)</td><td><code>text/html</code> "Attention Required! | Cloudflare"</td><td>Yes, both endpoints, with and without UA</td></tr>
+    <tr><td><span class="pill na">200 · empty</span></td><td>Filter matches nothing (e.g. unknown <code>name</code>)</td><td>expected <code>result.data: []</code></td><td>Not observed</td></tr>
+    <tr><td><span class="pill na">4xx / 5xx</span></td><td>Invalid params / server errors</td><td>unknown</td><td>Not observed</td></tr>
+  </table></div>
+
+  <h2 id="shape">Response shape (200)</h2>
+  <div class="callout info">
+    <strong>Path to data:</strong> the assignment writes <code>status.result.data</code>, but the real path is
+    <strong><code>result.data</code></strong>. <code>status</code> is the string <code>"ok"</code>, next to <code>result</code>.
+  </div>
+<pre><code>{
+  "status": "ok",                 // a string, NOT an object
+  "result": {
+    "total_count": 91,            // equals result.data.length in both samples
+    "count_by_category": {
+      "category": { "Mattress": 11, "Accessories": 28, ... },
+      "group":    { "Mattress": 14, "Bundle": 10, ... },
+      "construction": {}, "prices": {}, "style": {}, "rooms": {},
+      "colors": {}, "material": {}, "sizes": {}
+    },
+    "data": [ Product, ... ]
+  }
+}</code></pre>
+
+  <h2 id="product">Product</h2>
+  <h3>Keys on every item (91/91)</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Key</th><th>Type</th><th>Notes / example</th></tr>
+    <tr><td><code>id</code></td><td>string</td><td><code>64e7b25e420000075e9aba89</code></td></tr>
+    <tr><td><code>name</code></td><td>string</td><td>slug: <code>the-awara-hybrid-mattress-30</code></td></tr>
+    <tr><td><code>title</code></td><td>string</td><td>Awara Classic Hybrid Mattress</td></tr>
+    <tr><td><code>type</code></td><td>string</td><td><code>product</code></td></tr>
+    <tr><td><code>isService</code></td><td>string</td><td><code>"false"</code> (a string, not a boolean)</td></tr>
+    <tr><td><code>brand</code></td><td>string</td><td><code>awara</code></td></tr>
+    <tr><td><code>description</code></td><td>string</td><td>may be empty</td></tr>
+    <tr><td><code>inventoryKey</code></td><td>string</td><td><code>slimbadjustable</code></td></tr>
+    <tr><td><code>extras</code></td><td>string[]</td><td>IDs of related products</td></tr>
+    <tr><td><code>addons</code></td><td>object[]</td><td><code>{ id, addonType }</code></td></tr>
+    <tr><td><code>categoryNameTree</code></td><td>string[]</td><td><code>["Mattress", …]</code></td></tr>
+    <tr><td><code>mediaCollection</code></td><td>object[]</td><td><code>{ id, title, url, thumbUrl, contentType, tags, created }</code></td></tr>
+    <tr><td><code>pricing</code></td><td>object</td><td>see <a href="#pricing">Pricing</a></td></tr>
+    <tr><td><code>availability</code></td><td>object keyed by SKU</td><td><code>{ "&lt;sku&gt;": { isActive, isInStock, isBackOrderAllowed, backOrderMessage } }</code></td></tr>
+  </table></div>
+
+  <h3>Keys on some items only</h3>
+  <div class="table-wrap"><table>
+    <tr><th>Key</th><th>Present</th><th>Type / shape</th></tr>
+    <tr><td><code>status</code></td><td>85/91</td><td>string, e.g. <code>active</code></td></tr>
+    <tr><td><code>configuration</code></td><td>85/91</td><td><code>{ operations, sharetownSupported, trialPeriod }</code></td></tr>
+    <tr><td><code>attributes</code></td><td>80/91</td><td><code>{ category, categoryNameTree, group, markers }</code></td></tr>
+    <tr><td><code>metadata</code></td><td>79/91</td><td><code>{ url, seo_title, seo_desc, trialPeriod, donatable }</code></td></tr>
+    <tr><td><code>properties</code></td><td>76/91</td><td><code>{ name, title, options }[]</code> (e.g. sizes)</td></tr>
+    <tr><td><code>categoryId</code></td><td>67/91</td><td>string</td></tr>
+    <tr><td><code>skuData</code></td><td>63/91</td><td><code>{ sku, status, price: { bookPrice, totalValue }, totalValue, configuration, properties }[]</code></td></tr>
+    <tr><td><code>translations</code></td><td>30/91</td><td>array (empty for the hybrid mattress)</td></tr>
+    <tr><td><code>measures</code></td><td>28/91</td><td>not inspected</td></tr>
+    <tr><td><code>warrantyData</code></td><td>12/91</td><td>not inspected</td></tr>
+    <tr><td><code>packageConfiguration</code></td><td>2/91</td><td>not inspected</td></tr>
+  </table></div>
+
+  <h3 id="pricing">Pricing</h3>
+<pre><code>"pricing": {
+  "price":     { "amount": 59900, "currency": "$" },   // amounts are in cents
+  "listPrice": { "amount": 59900, "currency": "$" },
+  "label": "$599",
+  "description": "One payment of $599. "
+}</code></pre>
+
+  <h2>Where this is used in the repo</h2>
+  <ul>
+    <li>Schema: <code>src/api/schemas/products.schema.ts</code> (zod; required keys strict, optional keys <code>.optional()</code>, <code>.passthrough()</code>)</li>
+    <li>Client: <code>src/api/ProductsApi.ts</code>, <code>getProducts({ brand, name, lang })</code></li>
+    <li>Tests: <code>tests/api/products.spec.ts</code></li>
+  </ul>
+</main>
+</body>
+</html>
