@@ -2,7 +2,7 @@ import { test as base, expect } from '@playwright/test';
 import { CatalogApi } from '../api/CatalogApi';
 import { ProductsApi } from '../api/ProductsApi';
 import { CatalogResponseSchema } from '../api/schemas/catalog.schema';
-import { env, USER_AGENT } from '../config/env';
+import { env } from '../config/env';
 import { buildMattressCatalog, MATTRESSES, type MattressCatalog } from '../data/mattresses';
 
 interface ApiTestFixtures {
@@ -24,7 +24,7 @@ export const apiTest = base.extend<ApiTestFixtures, ApiWorkerFixtures>({
     async ({ playwright }, use) => {
       const context = await playwright.request.newContext({
         baseURL: env.baseUrl,
-        userAgent: USER_AGENT,
+        userAgent: env.uiUserAgent,
       });
       await use(new CatalogApi(context));
       await context.dispose();
