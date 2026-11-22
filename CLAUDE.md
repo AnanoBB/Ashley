@@ -194,6 +194,11 @@ tests/
 ## Git
 - Conventional commits (`chore:`, `test:`, `ci:`, `docs:`, `fix:`, `refactor:`).
 - One logical change per commit. Commit and push only when asked.
+- Work on a feature branch (`<type>/<short-name>`, e.g. `fix/ui-08-menu-retry`) and open a PR to
+  `main`; never push straight to `main`. Merge only when the user says so (rebase merge, so the
+  commits stay separate), delete the branch, then watch the `main` run.
+- On a PR from this repo, the tests run through the `push` event; the `pull_request` run shows
+  skipped jobs on purpose (it only runs for forks). Check the push run's result.
 - Never commit `.env`, reports or test results.
 
 ## README must cover
@@ -207,4 +212,3 @@ its wording.
 ## Planned (not built yet)
 - Allure environment info: base URLs, browser, Node version, User-Agent.
 - Scripts: `format`, `allure:serve`.
-- Feature branches + PRs to main instead of pushing straight to `main`.
