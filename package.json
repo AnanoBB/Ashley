@@ -16,7 +16,7 @@
     "lint:fix": "eslint . --fix && prettier --write .",
     "typecheck": "tsc --noEmit",
     "report:html": "playwright show-report",
-    "allure:generate": "allure generate allure-results -o allure-report --clean",
+    "allure:generate": "node scripts/mark-known-bugs.mjs && allure generate allure-results -o allure-report --clean",
     "allure:open": "allure open"
   },
   "devDependencies": {

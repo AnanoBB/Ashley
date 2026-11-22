@@ -159,7 +159,9 @@ store's catalog API and compare the website against them.
 
 > **"Expected to fail":** UI-02 and UI-09 check real bugs. They are marked `test.fail()`, so they
 > **pass** while the bug exists and turn **red** when someone fixes it, which tells us to update the
-> test. They show a ✘ in the terminal output; that's normal.
+> test. They show a ✘ in the terminal output; that's normal. In the **Allure report** they show
+> **red** under the **Known product bugs** category (tag `known-bug`, with a link to the bug list), so
+> they are never hidden among the passes, while CI stays green.
 
 ## 4. How it works
 
@@ -232,6 +234,12 @@ Example: `USER_AGENT=E2EUI-Tests npm run test:api`.
 - Every test is split into named steps, so the reports read like the test plan.
 - A failed UI test keeps a **screenshot, video and trace** in `test-results/`.
 - Locally, Allure results add up across runs until you delete `allure-results/`.
+- **Known bugs in Allure:** Playwright counts an expected failure as a pass, and the Allure reporter
+  would show it green. `npm run allure:generate` first runs `scripts/mark-known-bugs.mjs`, which marks
+  `@known-bug` tests that failed as expected as **failed** ("Known bug (expected failure): …"). Allure
+  groups them under **Categories → Known product bugs**, apart from real failures ("Product errors").
+  If a known bug stops reproducing, the test shows under **Known bug no longer reproduces**. The CI
+  run summary has its own `known bug` column.
 
 ## 7. CI: automatic, nightly and manual runs
 
@@ -310,6 +318,7 @@ src/
   data/mattresses.ts       The 3 mattresses (routes, test ids) + prices loaded from the catalog API
   fixtures/                Ready-made objects for tests; specs import `test` and `expect` from here
   utils/money.ts           Price formatting ($1,199)
+  utils/regexp.ts          Escapes text for use in a RegExp
 
 tests/
   api/products.spec.ts             API-01, 02 (assignment) and API-08 (consistency)
@@ -320,7 +329,8 @@ tests/
   ui/cart.spec.ts                  UI-12 … 22 (product page and cart, incl. the assignment flow)
   ui/header-mattresses.spec.ts     UI-05 … 09 (header menu)
 
-scripts/ci-summary.mjs     Writes the pass / fail / flaky table for CI
+scripts/ci-summary.mjs     Writes the pass / fail / flaky / known bug table for CI
+scripts/mark-known-bugs.mjs Marks @known-bug expected failures as failed for Allure
 docs/
   exploration.md           What was found exploring the site: locators, popups, 28 possible bugs
   test-plan.md             Scope, all test cases with priorities, risks

@@ -69,6 +69,7 @@ Update this checklist as parts are completed.
 .github/workflows/ci.yml      # CI pipeline
 allurerc.mjs                  # Allure 3 config (report name, history file)
 scripts/ci-summary.mjs        # pass/fail counts per project for the CI run summary
+scripts/mark-known-bugs.mjs   # marks @known-bug expected failures as failed before allure generate
 docs/exploration.md           # UI exploration findings (locators, flakiness risks, bugs)
 docs/test-plan.md             # test cases and IDs
 docs/api-overview.md          # API notes (response shape, Cloudflare block)
@@ -106,7 +107,7 @@ tests/
 - Specs import `test` and `expect` from `src/fixtures`, never directly from `@playwright/test`.
 - Use `test.step()` for each assignment step so they show up in the Allure and HTML reports.
 - Tags: `@api` / `@ui` (layer), `@smoke` / `@regression` (depth), `@cart` / `@header` (feature),
-  `@negative` (API error handling),
+  `@negative` (API error handling), `@known-bug` (a `test.fail()` test for a known site bug),
   `@quarantine` (a test blocked by the environment: add the tag and `test.fixme` with the reason;
   none right now).
 - Tests are independent and can run in parallel.
@@ -114,8 +115,9 @@ tests/
 - No hard waits (`waitForTimeout`), no secrets in code, no commented-out code.
 - **Never weaken or change an assertion just to make a test pass.** If a test fails, report whether
   it's a test problem or a real bug.
-- Known site bugs: keep the strict assertion, mark the test `test.fail()` and add a `known bug`
-  annotation pointing to `docs/exploration.md`.
+- Known site bugs: keep the strict assertion, mark the test `test.fail()`, tag it `@known-bug` and
+  add a `known bug` annotation pointing to `docs/exploration.md` plus an `issue` annotation linking
+  to its "Possible bugs" section (shown as a link in Allure).
 - Keep assignment tests clearly separate from any extra tests (put extras in their own `describe`).
 
 ### API
@@ -147,6 +149,11 @@ tests/
 
 ## Reporting
 - `npm run allure:generate` → `allure-report/`; `npm run allure:open`. Config in `allurerc.mjs`.
+- Known bugs: `allure:generate` first runs `scripts/mark-known-bugs.mjs`, which marks `@known-bug`
+  results that failed as expected as `failed` (message prefixed "Known bug (expected failure)"), so
+  they show red under the "Known product bugs" category (`allurerc.mjs`), not as green passes. A
+  known bug that passes goes to "Known bug no longer reproduces". `ci-summary.mjs` counts them in
+  their own `known bug` column.
 - Allure history lives in `history.jsonl` (git-ignored). In CI it's kept with the published report.
 - On UI failure: screenshot, video and trace attached.
 - `allure-results/`, `allure-report/`, `playwright-report/` and `test-results/` are gitignored.

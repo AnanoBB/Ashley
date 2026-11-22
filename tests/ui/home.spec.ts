@@ -37,11 +37,19 @@ test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
   test(
     'UI-02 hero "Shop Mattress" opens exactly /mattress',
     {
-      annotation: {
-        type: 'known bug',
-        description:
-          'docs/exploration.md #1: hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
-      },
+      tag: '@known-bug',
+      annotation: [
+        {
+          type: 'known bug',
+          description:
+            'docs/exploration.md #1: hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
+        },
+        {
+          type: 'issue',
+          description:
+            'https://github.com/AnanoBB/Ashley/blob/main/docs/exploration.md#possible-bugs',
+        },
+      ],
     },
     async ({ page, homePage }) => {
       test.fail();

@@ -88,11 +88,19 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
   test(
     'UI-09 header "Mattresses" link opens the mattress listing',
     {
-      annotation: {
-        type: 'known bug',
-        description:
-          'docs/exploration.md #13: the link opens /mattress (one product), not /mattresses',
-      },
+      tag: '@known-bug',
+      annotation: [
+        {
+          type: 'known bug',
+          description:
+            'docs/exploration.md #13: the link opens /mattress (one product), not /mattresses',
+        },
+        {
+          type: 'issue',
+          description:
+            'https://github.com/AnanoBB/Ashley/blob/main/docs/exploration.md#possible-bugs',
+        },
+      ],
     },
     async ({ page, header }) => {
       test.fail();

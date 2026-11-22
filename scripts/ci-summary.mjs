@@ -1,6 +1,7 @@
 // Prints a Markdown summary of allure-results/ (pass/fail counts per Playwright project) for
 // $GITHUB_STEP_SUMMARY. With retries there is one result per attempt: the last attempt counts,
-// and a test that passed after a failed or broken attempt is reported as flaky.
+// and a test that passed after a failed or broken attempt is reported as flaky. Known bugs
+// (@known-bug, failing as expected) get their own column and are not listed as problems.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
@@ -15,9 +16,10 @@ for (const file of files) {
   attemptsByTest.set(key, [...(attemptsByTest.get(key) ?? []), result]);
 }
 
-const COLUMNS = ['passed', 'failed', 'broken', 'skipped', 'flaky'];
+const COLUMNS = ['passed', 'failed', 'broken', 'skipped', 'flaky', 'known bug'];
 const byProject = new Map();
 const problems = [];
+const knownBugs = [];
 
 for (const attempts of attemptsByTest.values()) {
   attempts.sort((a, b) => a.stop - b.stop);
@@ -26,11 +28,17 @@ for (const attempts of attemptsByTest.values()) {
   const flaky =
     last.status === 'passed' &&
     attempts.some((attempt) => attempt.status === 'failed' || attempt.status === 'broken');
-  const outcome = flaky ? 'flaky' : last.status;
+  // Failed as expected (marked by scripts/mark-known-bugs.mjs): counted apart from real failures.
+  const knownBug =
+    last.status === 'failed' &&
+    (last.statusDetails?.message ?? '').startsWith('Known bug (expected failure)');
+  const outcome = flaky ? 'flaky' : knownBug ? 'known bug' : last.status;
   const counts = byProject.get(project) ?? Object.fromEntries(COLUMNS.map((column) => [column, 0]));
   counts[outcome] = (counts[outcome] ?? 0) + 1;
   byProject.set(project, counts);
-  if (outcome !== 'passed' && outcome !== 'skipped') {
+  if (outcome === 'known bug') {
+    knownBugs.push(`- **known bug** \`${project}\` ${last.name}`);
+  } else if (outcome !== 'passed' && outcome !== 'skipped') {
     problems.push(`- **${outcome}** \`${project}\` ${last.name}`);
   }
 }
@@ -45,6 +53,9 @@ if (byProject.size === 0) {
   }
   if (problems.length > 0) {
     lines.push('', ...problems);
+  }
+  if (knownBugs.length > 0) {
+    lines.push('', 'Known product bugs (fail as expected, see docs/exploration.md):', ...knownBugs);
   }
 }
 process.stdout.write(`${lines.join('\n')}\n`);
