@@ -96,24 +96,25 @@ Considered but not automated:
   2026-11-22: they return 405 `text/plain` "Defined methods: GET".)
 - A partial name (`the-awara-hybrid`) not matching the full product: covered in spirit by API-04 and
   API-07b (the name filter is exact).
-- The User-Agent header on every request: set once in `playwright.config.ts` and proven by the API
-  tests passing (the API rejects the assignment's `E2EUI-Tests` with 403).
+- The User-Agent header on every request: set per project in `playwright.config.ts`. The browser
+  sends the assignment's `E2EUI-Tests`; the API tests send `E2EUI-Tests-Brands-CI`, because the API
+  rejects `E2EUI-Tests` with 403.
 
 ### UI: home and navigation
 
-| ID    | Layer | Title                                                                                                    | Type     | Priority | Notes                                                                                                                |
-| ----- | ----- | -------------------------------------------------------------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
-| UI-01 | UI    | Home page opens: URL `/`, title present, hero h1 visible                                                 | Positive | P1       | Assignment step 1                                                                                                    |
-| UI-02 | UI    | Clicking hero "Shop Mattress" opens `/mattress`                                                          | Positive | P1       | Assignment step 2. **Known bug #1**: it goes to `/mattresses/essential-latex-hybrid-mattress`. Marked `test.fail()`. |
-| UI-03 | UI    | Hero "Shop Mattress" opens a mattress product page (URL contains `/mattress`, h1 is a catalog mattress)  | Positive | P1       | Proves the click works regardless of bug #1                                                                          |
-| UI-04 | UI    | The cookie banner and promo popup don't block the flow (handled automatically)                           | Edge     | P1       | Delayed overlays (~seconds and ~16 s)                                                                                |
-| UI-05 | UI    | Header "Mattresses" hover opens the mega menu with 3 cards: Essential, Classic, Premier                  | Positive | P2       |                                                                                                                      |
-| UI-06 | UI    | Each mega menu card opens the matching product page (h1 = card name)                                     | Positive | P2       | Data-driven ×3                                                                                                       |
-| UI-07 | UI    | The "from" price on each mega menu card ($499+/$599+/$749+) equals the cheapest size on its product page | Positive | P2       | Data-driven ×3                                                                                                       |
-| UI-08 | UI    | "Shop All Mattresses" opens `/mattresses` and lists all 3 mattresses                                     | Positive | P2       |                                                                                                                      |
-| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                      | Negative | P2       | **Known bug #13**: it opens a single product. Marked `test.fail()`.                                                  |
-| UI-10 | UI    | The logo returns to the home page from a product page                                                    | Positive | P3       |                                                                                                                      |
-| UI-11 | UI    | The product page `<title>` matches its h1 (all 3 mattresses)                                             | Edge     | P3       | **Known bug #22** (Premier)                                                                                          |
+| ID    | Layer | Title                                                                                                                | Type     | Priority | Notes                                                                                                                |
+| ----- | ----- | -------------------------------------------------------------------------------------------------------------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| UI-01 | UI    | Home page opens: URL `/`, title present, hero h1 visible                                                             | Positive | P1       | Assignment step 1                                                                                                    |
+| UI-02 | UI    | Clicking hero "Shop Mattress" opens `/mattress`                                                                      | Positive | P1       | Assignment step 2. **Known bug #1**: it goes to `/mattresses/essential-latex-hybrid-mattress`. Marked `test.fail()`. |
+| UI-03 | UI    | Hero "Shop Mattress" opens a mattress product page (URL is `/mattress` or `/mattresses/…`, h1 is a catalog mattress) | Positive | P1       | Proves the click works regardless of bug #1                                                                          |
+| UI-04 | UI    | The cookie banner and promo popup don't block the flow (handled automatically)                                       | Edge     | P1       | Delayed overlays (~seconds and ~16 s)                                                                                |
+| UI-05 | UI    | Header "Mattresses" hover opens the mega menu with 3 cards: Essential, Classic, Premier                              | Positive | P2       |                                                                                                                      |
+| UI-06 | UI    | Each mega menu card opens the matching product page (h1 = card name)                                                 | Positive | P2       | Data-driven ×3                                                                                                       |
+| UI-07 | UI    | The "from" price on each mega menu card ($499+/$599+/$749+) equals the cheapest size on its product page             | Positive | P2       | Data-driven ×3                                                                                                       |
+| UI-08 | UI    | "Shop All Mattresses" opens `/mattresses` and lists all 3 mattresses                                                 | Positive | P2       |                                                                                                                      |
+| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                                  | Negative | P2       | **Known bug #13**: it opens a single product. Marked `test.fail()`.                                                  |
+| UI-10 | UI    | The logo returns to the home page from a product page                                                                | Positive | P3       |                                                                                                                      |
+| UI-11 | UI    | The product page `<title>` matches its h1 (all 3 mattresses)                                                         | Edge     | P3       | **Known bug #22** (Premier)                                                                                          |
 
 ### UI: product page and cart
 
@@ -132,12 +133,15 @@ Considered but not automated:
 | UI-22 | UI    | A new browser context starts with an empty cart (test isolation)                                                                | Edge     | P2       | Guards against leaks between tests                                            |
 | UI-23 | UI    | Dismissing the cart-page "Extend" protection popup doesn't add protection to the cart                                           | Negative | P3       |                                                                               |
 | UI-24 | UI    | Going straight to `/checkout/cart` with an empty cart shows an empty-cart state, not an error                                   | Negative | P3       |                                                                               |
+| UI-25 | UI    | An unknown URL returns 404 and shows the not-found page, whose "Back to home" link works                                        | Negative | P2       |                                                                               |
+| UI-26 | UI    | When `POST /carts/my/items` fails (stubbed 500), the shopper stays on the product page and the cart stays empty                 | Negative | P2       | Finding #29: no error message is shown                                        |
 
-**Total: 35 cases.** 11 are P1 (the assignment plus the core path), 15 are P2 and 9 are P3. For this
+**Total: 37 cases.** 11 are P1 (the assignment plus the core path), 17 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
-**Automated (31 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
-07 (×3), 08, 09, 12, 13/14/15 (one test), 16, 21, 22.
+**Automated (33 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
+07 (×3), 08, 09, 12, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 16,
+21, 22, 25, 26.
 
 **Not automated:**
 
@@ -149,16 +153,16 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 ## 6. Risks and known issues
 
-| Risk / issue                                                                                       | Impact                                  | Mitigation                                                                          |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------- | ----------------------------------------------------------------------------------- |
-| **The API host is blocked by Cloudflare for the assignment's User-Agent** (`E2EUI-Tests` gets 403) | All API tests fail with 403             | Resolved: the company provided `E2EUI-Tests-Brands-CI`, set in `src/config/env.ts`. |
-| **The assignment URL has a typo** (`qa.awaraslep.com` doesn't exist)                               | Nothing runs against the documented URL | Use `qa.awarasleep.com` (configurable via `BASE_URL`). Noted in the README.         |
-| **The hero "Shop Mattress" goes to the wrong URL** (bug #1)                                        | UI-02 fails                             | `test.fail()` with an annotation. UI-03 still covers the navigation.                |
-| Delayed overlays (cookie banner, promo popup, upsell popups)                                       | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                |
-| A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.           |
-| Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.          |
-| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers everywhere, and 1 retry only in CI (counted as flaky in the run summary). |
-| Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test (UI-22 checks it). No checkout, so no orders are created.  |
+| Risk / issue                                                                                       | Impact                                  | Mitigation                                                                                                                      |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **The API host is blocked by Cloudflare for the assignment's User-Agent** (`E2EUI-Tests` gets 403) | All API tests fail with 403             | Resolved: the company provided `E2EUI-Tests-Brands-CI` for the API tests (`API_USER_AGENT`). The website accepts `E2EUI-Tests`. |
+| **The assignment URL has a typo** (`qa.awaraslep.com` doesn't exist)                               | Nothing runs against the documented URL | Use `qa.awarasleep.com` (configurable via `BASE_URL`). Noted in the README.                                                     |
+| **The hero "Shop Mattress" goes to the wrong URL** (bug #1)                                        | UI-02 fails                             | `test.fail()` with an annotation. UI-03 still covers the navigation.                                                            |
+| Delayed overlays (cookie banner, promo popup, upsell popups)                                       | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                                                            |
+| A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.                                                       |
+| Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.                                                      |
+| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers everywhere, and 1 retry only in CI (counted as flaky in the run summary).                                             |
+| Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test (UI-22 checks it). No checkout, so no orders are created.                                              |
 
 ## 7. Entry and exit criteria
 
