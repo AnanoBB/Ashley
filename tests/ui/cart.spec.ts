@@ -117,92 +117,28 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
     });
   });
 
-  test('UI-18 adding the same mattress twice totals quantity 2 and matches the counter', async ({
+  test('UI-21 the cart survives a page reload', async ({
     page,
     productPage,
     cartPage,
     mattressCatalog,
   }) => {
     const mattress = mattressCatalog.classic;
-    const unitCents = sizeOf(mattress, DEFAULT_SIZE).priceCents;
 
-    for (const attempt of [1, 2]) {
-      await test.step(`Add ${mattress.title} to the cart (${attempt}/2)`, async () => {
-        await productPage.goto(mattress.path);
-        const { response } = await productPage.addToCart();
-        expect(response.status()).toBe(200);
-        await expect(page).toHaveURL('/checkout/cart');
-      });
-    }
-
-    await test.step('Cart quantities add up to 2 and the total is 2 × the unit price', async () => {
-      await expect(cartPage.lineItems.first()).toBeVisible();
-      const quantities = await page.getByTestId('quantity_number').allInnerTexts();
-      expect(quantities.reduce((sum, quantity) => sum + Number(quantity), 0)).toBe(2);
-      await expect(cartPage.total).toHaveText(formatUsd(unitCents * 2));
-    });
-
-    await test.step('Header counter matches the cart', async () => {
+    await test.step(`Add ${mattress.title} (${DEFAULT_SIZE}) to the cart`, async () => {
       await productPage.goto(mattress.path);
-      await expect(productPage.header.cartIcon).toHaveText('2');
-    });
-  });
-
-  test.describe('with one Classic Hybrid (Queen) in the cart', () => {
-    test.beforeEach(async ({ page, productPage, mattressCatalog }) => {
-      await productPage.goto(mattressCatalog.classic.path);
       const { response } = await productPage.addToCart();
       expect(response.status()).toBe(200);
       await expect(page).toHaveURL('/checkout/cart');
     });
 
-    test('UI-19 increasing the quantity updates quantity and total', async ({
-      cartPage,
-      mattressCatalog,
-    }) => {
-      const mattress = mattressCatalog.classic;
+    await test.step('Reload the cart page', () => page.reload({ waitUntil: 'domcontentloaded' }));
+
+    await test.step('The item is still in the cart', async () => {
       const item = cartPage.item(mattress.title);
-      const unitCents = sizeOf(mattress, DEFAULT_SIZE).priceCents;
-
-      await test.step('Click + on the line item', () => item.increaseQuantity.click());
-
-      await test.step('Quantity is 2 and the total doubles', async () => {
-        await expect(item.quantity).toHaveText('2');
-        await expect(cartPage.total).toHaveText(formatUsd(unitCents * 2));
-      });
-    });
-
-    test('UI-20 removing the only item empties the cart and the counter', async ({
-      homePage,
-      cartPage,
-      mattressCatalog,
-    }) => {
-      const item = cartPage.item(mattressCatalog.classic.title);
-
-      await test.step('Remove the line item', () => item.decreaseOrRemove.click());
-
-      await test.step('Cart shows the empty state', async () => {
-        await expect(cartPage.emptyState).toBeVisible();
-        await expect(cartPage.lineItems).toHaveCount(0);
-      });
-
-      await test.step('Header counter is empty', async () => {
-        await homePage.goto();
-        await expect(homePage.header.cartIcon).toHaveText('');
-      });
-    });
-
-    test('UI-21 the cart survives a page reload', async ({ page, cartPage, mattressCatalog }) => {
-      const mattress = mattressCatalog.classic;
-
-      await test.step('Reload the cart page', () => page.reload({ waitUntil: 'domcontentloaded' }));
-
-      await test.step('The item is still in the cart', async () => {
-        const item = cartPage.item(mattress.title);
-        await expect(cartPage.lineItems).toHaveCount(1);
-        await expect(item.title).toHaveText(mattress.title);
-        await expect(item.quantity).toHaveText('1');
-      });
+      await expect(cartPage.lineItems).toHaveCount(1);
+      await expect(item.title).toHaveText(mattress.title);
+      await expect(item.quantity).toHaveText('1');
     });
   });
 

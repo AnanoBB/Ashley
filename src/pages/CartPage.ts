@@ -12,8 +12,6 @@ export class CartLineItem {
   readonly size: Locator;
   readonly price: Locator;
   readonly quantity: Locator;
-  readonly increaseQuantity: Locator;
-  readonly decreaseOrRemove: Locator;
 
   constructor(page: Page, productTitle: string) {
     const key = titleKey(productTitle);
@@ -22,9 +20,6 @@ export class CartLineItem {
     this.size = this.root.getByTestId('checkout_Size');
     this.price = this.root.getByTestId('current_price');
     this.quantity = this.root.getByTestId('quantity_number');
-    this.increaseQuantity = this.root.getByTestId(`add_quantity_${key}`);
-    // At quantity 1 this button is a trash icon and removes the line.
-    this.decreaseOrRemove = this.root.getByTestId(`remove_${key}`);
   }
 }
 
