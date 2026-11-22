@@ -19,10 +19,8 @@ API base URL: `https://api.qa-env.residenthome.com`. All requests send the User-
 > a string next to `result`. The tests assert `status === "ok"` (in the schema) and check
 > `result.data`.
 
-> **Quarantined:** both API tests are tagged `@quarantine` and skipped by default. The API sits
-> behind Cloudflare, which answers every non-browser request (Playwright `request`, curl, http or
-> https) with `403 Forbidden` before it reaches the API. The assertions are unchanged; run them with
-> `RUN_QUARANTINED=true npm run test:api` to check whether the block is still there.
+> **Quarantined:** both API tests are skipped by default because Cloudflare blocks them. See
+> [Known environment issue](#known-environment-issue).
 
 ## Prerequisites
 
@@ -86,8 +84,12 @@ tests/
 
 ## Known environment issue
 
-As of 2026-11-21, Cloudflare in front of `api.qa-env.residenthome.com` returns **403 (HTML block
-page)** to non-browser clients (curl, Playwright's request context), whatever the User-Agent is. A
-browser on the same network gets JSON. When this happens, the tests fail on the status-200 check.
-That is an environment/WAF block, not a test defect. It is fixed by allowing the `E2EUI-Tests`
-User-Agent (or the runner IPs) in Cloudflare.
+As of 2026-11-22, Cloudflare in front of `api.qa-env.residenthome.com` returns **403 (HTML block
+page)** to non-browser clients (curl, Playwright's request context), over http and https, whatever
+the User-Agent is. A browser on the same network gets JSON. The tests then fail on the status-200
+check. That is an environment/WAF block, not a test defect. It is fixed by allowing the
+`E2EUI-Tests` User-Agent (or the runner IPs) in Cloudflare.
+
+Until then, both API tests are tagged `@quarantine` and skipped (`test.fixme` with the reason), so
+CI stays green and the reports show them as skipped. The assertions are unchanged. To check whether
+the block is still there, run them with `RUN_QUARANTINED=true npm run test:api`.
