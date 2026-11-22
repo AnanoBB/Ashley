@@ -19,6 +19,11 @@ API base URL: `https://api.qa-env.residenthome.com`. All requests send the User-
 > a string next to `result`. The tests assert `status === "ok"` (in the schema) and check
 > `result.data`.
 
+> **Quarantined:** both API tests are tagged `@quarantine` and skipped by default. The API sits
+> behind Cloudflare, which answers every non-browser request (Playwright `request`, curl, http or
+> https) with `403 Forbidden` before it reaches the API. The assertions are unchanged; run them with
+> `RUN_QUARANTINED=true npm run test:api` to check whether the block is still there.
+
 ## Prerequisites
 
 - Node.js **20+** (`node -v`)
@@ -42,6 +47,7 @@ cp .env.example .env   # optional: override API_URL / BASE_URL
 | `npx playwright test --grep @ui`    | Run tests tagged `@ui`          |
 | `npx playwright test --grep @smoke` | Run `@smoke` tests (API and UI) |
 | `npm run test:ui -- --grep @smoke`  | Run only the UI `@smoke` tests  |
+| `RUN_QUARANTINED=true npm test`     | Also run `@quarantine` tests    |
 | `npm run lint`                      | ESLint + Prettier check         |
 | `npm run typecheck`                 | TypeScript type check           |
 
