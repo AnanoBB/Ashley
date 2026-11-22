@@ -29,9 +29,9 @@ for (const attempts of attemptsByTest.values()) {
     last.status === 'passed' &&
     attempts.some((attempt) => attempt.status === 'failed' || attempt.status === 'broken');
   // Failed as expected (marked by scripts/mark-known-bugs.mjs): counted apart from real failures.
-  const knownBug =
-    last.status === 'failed' &&
-    (last.statusDetails?.message ?? '').startsWith('Known bug (expected failure)');
+  const knownBug = last.labels.some(
+    (label) => label.name === 'knownBug' && label.value === 'expected-failure',
+  );
   const outcome = flaky ? 'flaky' : knownBug ? 'known bug' : last.status;
   const counts = byProject.get(project) ?? Object.fromEntries(COLUMNS.map((column) => [column, 0]));
   counts[outcome] = (counts[outcome] ?? 0) + 1;
