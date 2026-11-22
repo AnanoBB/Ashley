@@ -23,5 +23,3 @@ export const CartResponseSchema = z
       .passthrough(),
   })
   .passthrough();
-
-export type CartResponse = z.infer<typeof CartResponseSchema>;
