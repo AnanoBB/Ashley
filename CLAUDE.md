@@ -9,6 +9,9 @@
   2. Click the "Shop mattress" button on the Hero Banner → check we are on `/mattress`.
   3. Add the mattress to the cart → check the mattress has been added to the cart.
 
+> The assignment text says `qa.awaraslep.com`, which doesn't resolve. The real host is
+> `qa.awarasleep.com`.
+
 ### 2. API test
 - Base URL: https://api.qa-env.residenthome.com
 - GET operations around the products flow:
@@ -16,57 +19,148 @@
   2. `/products?name=the-awara-hybrid-mattress-30&lang=en&brand=awara` → `status.result.data` length = 1
 - For each step, check the response status is 200.
 
-### 3. Additional
+### 3. Additional task
 1. Code in a GitHub repository.
 2. README.md with clear instructions for running the tests.
 3. A simple tool for presenting test results (Allure).
 4. CI/CD with GitHub Actions: run tests on each commit; upload test artifacts (plus).
 
-## Current phase
-**Phase 1: API only.** Framework skeleton, API tests, Allure reporting, CI for the `api` project.
-Do NOT create UI tests or page objects yet. Phase 2 (UI) comes later.
+## Status
+- [x] Part 2: API tests. 2 tests in `tests/api/products.spec.ts`, **quarantined**: Cloudflare
+  answers every non-browser request (Playwright `request`, curl, http or https) with 403 before it
+  reaches the API. Run them with `RUN_QUARANTINED=true`; lift the quarantine only once they pass.
+- [x] Part 1: UI tests (explored first → `docs/exploration.md`). 21 tests in `tests/ui/`, passing
+  locally and in CI. The assignment flow is the `@smoke` set (UI-01, UI-02, UI-03, UI-13/14/15);
+  the `@regression` extras are under review. Ask before adding or removing UI cases. UI-10, UI-11
+  and UI-17 are unused IDs.
+- [x] Part 3.3: Allure reporting
+- [x] Part 3.4: GitHub Actions CI/CD + artifacts + Allure on GitHub Pages
+- [x] Part 3.2: README.md (missing items listed under "README must cover")
+- [ ] Final review against the assignment
+
+Update this checklist as parts are completed.
 
 ## Tech stack
 - Playwright Test + TypeScript, Node 20+
-- dotenv for config, zod for response schema validation
-- allure-playwright for reporting (plus Playwright HTML report)
-- ESLint (flat config, typescript-eslint) + Prettier
+- dotenv for config, zod for API response schema validation
+- allure-playwright + Allure 3 CLI (Node package, no Java) for reporting, plus Playwright HTML report
+- ESLint (flat config, typescript-eslint with type-aware linting) + Prettier
+- Playwright MCP (with `--user-agent "E2EUI-Tests"`) for exploring the app. Never used in CI.
 
 ## Project structure
 ```
+.github/workflows/ci.yml      # CI pipeline
+docs/exploration.md           # UI exploration findings (locators, flakiness risks, bugs)
+docs/test-plan.md             # test cases and IDs
+docs/api-overview.md          # API notes (response shape, Cloudflare block)
 src/
-  api/            # API clients (one class per resource), extend BaseApi
-  api/schemas/    # zod schemas + inferred TS types
-  fixtures/       # custom Playwright fixtures (test, expect exported from here)
-  config/         # env/config helpers
-  pages/          # (phase 2) page objects
+  api/                        # API clients (one class per resource), extend BaseApi
+  api/schemas/                # zod schemas + inferred TS types
+  pages/                      # Page Objects, extend BasePage
+  components/                 # reusable UI parts (Header, overlay handlers)
+  data/                       # test data helpers (mattress catalog)
+  utils/                      # small helpers (money formatting)
+  fixtures/                   # custom fixtures; specs import test/expect from index.ts
+  config/                     # env/config helpers (env.ts)
 tests/
-  api/            # API specs
-  ui/             # (phase 2) UI specs
+  api/                        # API specs (project `api`)
+  ui/                         # UI specs (project `ui`)
 ```
 
+## Configuration
+- `playwright.config.ts`:
+  - `use.userAgent: 'E2EUI-Tests'` set globally (applies to the browser and API request context).
+  - Projects: `api` (testDir `tests/api`, baseURL = API_URL) and `ui` (testDir `tests/ui`,
+    baseURL = BASE_URL, Chromium, 1440×900, 90 s test timeout, 15 s expect timeout).
+  - `fullyParallel`, 3 workers locally / 2 on CI (the shared QA site slows down with more).
+  - Reporters: `list`, `html` (open: never), `allure-playwright` (results in `allure-results/`).
+  - `retries: 2` on CI, 0 locally. `forbidOnly` on CI.
+  - screenshot `only-on-failure`, video `retain-on-failure`, trace `retain-on-failure`.
+- Env vars (`.env`, optional): `BASE_URL` (default https://qa.awarasleep.com), `API_URL` (default
+  https://api.qa-env.residenthome.com), `RUN_QUARANTINED` (default false). `.env.example` is
+  committed and kept in sync; `.env` is not.
+
 ## Conventions
-- Import `test` and `expect` from `src/fixtures`, never directly from `@playwright/test` in specs.
-- API clients return the raw `APIResponse`; tests do the assertions. Keep clients thin and typed.
-- Every API test: assert status 200 first, then validate the body with the zod schema, then the
-  assignment-specific assertion (data length).
-- Verify the real response shape (e.g. with curl) before writing schemas. Don't guess the path to
-  `data`. The assignment writes it as `status.result.data`.
-- Use `test.step()` for each assignment step so they show up in Allure/HTML reports.
-- Tag tests: `@api`, `@smoke`.
-- User-Agent `E2EUI-Tests` is set globally in `playwright.config.ts` (`use.userAgent`).
-- Base URLs come from env vars (`API_URL`, `BASE_URL`) with the assignment URLs as defaults.
-- No hard waits, no secrets in code, no commented-out code.
-- Never weaken or change an assertion just to make a test pass. If a test fails, report whether it is
-  a test problem or a real bug.
+
+### General
+- Specs import `test` and `expect` from `src/fixtures`, never directly from `@playwright/test`.
+- Use `test.step()` for each assignment step so they show up in the Allure and HTML reports.
+- Tags: `@api` / `@ui` (layer), `@smoke` / `@regression` (depth), `@cart` / `@header` (feature),
+  `@quarantine` (skipped by default via `test.fixme` with the reason).
+- Tests are independent and can run in parallel.
+- Every promise must be awaited (`@typescript-eslint/no-floating-promises` is on).
+- No hard waits (`waitForTimeout`), no secrets in code, no commented-out code.
+- **Never weaken or change an assertion just to make a test pass.** If a test fails, report whether
+  it's a test problem or a real bug.
+- Known site bugs: keep the strict assertion, mark the test `test.fail()` and add a `known bug`
+  annotation pointing to `docs/exploration.md`.
+- Keep assignment tests clearly separate from any extra tests (put extras in their own `describe`).
+
+### API
+- Verify the real response shape before writing schemas. Don't guess the path to `data`: the
+  assignment writes `status.result.data`, but the real body is
+  `{ "status": "ok", "result": { "data": [...] } }`, so tests check `result.data`. This is
+  documented in the README.
+- API clients are thin and typed, use Playwright `request` with `params` (no string-built URLs),
+  and return the raw `APIResponse`. Assertions live in tests.
+- Every API test: assert status 200 → parse the body with the zod schema → assignment assertion
+  (data length).
+
+### UI
+- Page Object Model: locators as `readonly` fields, methods are user actions (`addToCart()`,
+  `selectSize()`). No assertions inside page objects, except for readiness checks and retry waits
+  (`waitUntilReady()`).
+- Locator priority: `getByRole` (with name) → `getByLabel` → `getByTestId` → `getByText`.
+  No XPath, no long CSS chains. Scope locators (e.g. inside the hero banner) when text isn't unique.
+- Use web-first assertions (`toBeVisible`, `toHaveURL`, `toHaveText`, `toHaveCount`).
+- Overlays (cookie banner, promo and protection-plan modals) are dismissed by the `page` fixture,
+  not ad hoc in tests. Opt out per test with `test.use({ autoDismissOverlays: [...] })`.
+- Expected prices come from the catalog API (`mattressCatalog` fixture), not hard-coded values.
+- Verify "added to cart" with several signals: add-to-cart API response, the cart line item
+  (name, size, price, quantity) and the header cart counter.
+- Use `docs/exploration.md` as the source of truth for locators and flakiness risks.
+
+## Reporting
+- `npm run allure:generate` → `allure-report/`; `npm run allure:open`.
+- On UI failure: screenshot, video and trace attached.
+- `allure-results/`, `allure-report/`, `playwright-report/` and `test-results/` are gitignored.
+
+## CI/CD (`.github/workflows/ci.yml`)
+- Triggers: push to any branch, pull requests from forks, workflow_dispatch. Concurrency cancels
+  older runs on the same branch.
+- Job `tests`: lint → typecheck → install Chromium → `npm test` (both projects in one run, so there
+  is one HTML report) → generate Allure. Job `publish-report`: deploys Allure to GitHub Pages on
+  `main`, even when tests fail, and links it in the run summary:
+  https://ananobb.github.io/Ashley/
+- Artifacts (14-day retention): `allure-report`, `playwright-report`, `test-results`.
+- After pushing, watch the run (`gh run watch`) and report the result.
 
 ## Commands
-- `npm run lint` – ESLint
-- `npm test` – all tests
-- `npm run test:api` – API project only
-- `npm run allure:generate` / `npm run allure:open` – Allure report
-- After any code change: run lint and the relevant tests before saying you're done.
+- `npm ci` / `npx playwright install --with-deps chromium`
+- `npm run lint` (ESLint + Prettier check) / `npm run lint:fix` / `npm run typecheck`
+- `npm test` – all tests; `npm run test:api` / `npm run test:ui` – one project
+- `npx playwright test --grep @smoke` – by tag; `RUN_QUARANTINED=true npm test` – include quarantined
+- `npm run test:ui -- --headed --workers=1` – watch UI tests one by one
+- `npm run report:html` – Playwright HTML report
+- `npm run allure:generate` / `npm run allure:open`
+- After any code change: run lint, typecheck and the relevant tests before saying you're done.
 
 ## Git
-- Conventional commits (`chore:`, `test:`, `ci:`, `docs:`).
-- One logical change per commit.
+- Conventional commits (`chore:`, `test:`, `ci:`, `docs:`, `fix:`, `refactor:`).
+- One logical change per commit. Commit and push only when asked.
+- Never commit `.env`, reports or test results.
+
+## README must cover
+CI badge + live Allure link, overview, tech stack, prerequisites, install, run commands
+(all / API / UI / headed / single test / tag), reports, CI/CD and where to find artifacts,
+structure + design decisions, assumptions and findings (actual `data` path, bugs, Cloudflare 403),
+AI usage (short and honest). Every command in it must work in a clean clone.
+Still missing: CI badge, design decisions, AI usage, headed / single-test commands.
+
+## Planned (not built yet)
+- CI: separate `lint` job, then a `test` matrix (`api`, `ui`; fail-fast false; browsers only for UI),
+  then a `report` job that merges results and keeps Allure history.
+- Per-project artifacts (`allure-results-<project>` etc.) and a job summary with pass/fail counts.
+- Allure environment info: base URLs, browser, Node version, User-Agent.
+- Scripts: `format`, `test:smoke`, `allure:serve`.
+- Feature branches + PRs to main instead of pushing straight to `main`.
