@@ -13,8 +13,8 @@
 
 - **No authentication.** No API key, token or cookie is needed.
 - **User-Agent:** a Cloudflare WAF sits in front of the API and lets through
-  `User-Agent: E2EUI-Tests-Brands-CI` (provided for these tests on 2026-11-22). It is set once in
-  `src/config/env.ts` and used by `playwright.config.ts`. The assignment's `E2EUI-Tests` still
+  `User-Agent: E2EUI-Tests-Brands-CI` (provided for these tests on 2026-11-22). It is the
+  `api` project's User-Agent (`API_USER_AGENT` in `src/config/env.ts`). The assignment's `E2EUI-Tests` still
   gets a **403 HTML block page** (so did no User-Agent and a Chrome User-Agent on 2026-11-21).
 
 ## Endpoint: `GET /products`
@@ -36,12 +36,12 @@ Examples:
 
 ## Status codes
 
-| Code    | When                                                 | Body                                                                                        | Test               |
-| ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------ |
-| **200** | Valid query, including one that matches nothing      | JSON, see below (`data: []`, `total_count: 0` when nothing matches)                         | API-01, 02, 04     |
-| **400** | `brand` missing (even with `name`), empty or unknown | `{ "status": "error", "error": "missed brand values" }` or `"No such brand name '<brand>'"` | API-03, 05, 09, 10 |
-| **403** | User-Agent not allowed by Cloudflare                 | `text/html` "Attention Required! \| Cloudflare" page                                        | (README §12)       |
-| **405** | `POST`, `PUT`, `DELETE`                              | `text/plain` "POST not allowed. Defined methods: GET"                                       | not tested         |
+| Code    | When                                                 | Body                                                                                        | Test                |
+| ------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------- |
+| **200** | Valid query, including one that matches nothing      | JSON, see below (`data: []`, `total_count: 0` when nothing matches)                         | API-01, 02, 04      |
+| **400** | `brand` missing (even with `name`), empty or unknown | `{ "status": "error", "error": "missed brand values" }` or `"No such brand name '<brand>'"` | API-03, 05, 09, 10  |
+| **403** | User-Agent not allowed by Cloudflare                 | `text/html` "Attention Required! \| Cloudflare" page                                        | (README User-Agent) |
+| **405** | `POST`, `PUT`, `DELETE`                              | `text/plain` "POST not allowed. Defined methods: GET"                                       | not tested          |
 
 Unusual `name` values (SQL-like characters, 3000 characters, empty) return 200 with an empty list,
 never a 5xx (API-11).

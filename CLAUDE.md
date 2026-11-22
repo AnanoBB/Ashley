@@ -11,8 +11,9 @@
 
 Deviations (documented in the README):
 - The assignment's host `qa.awaraslep.com` doesn't resolve; the real one is `qa.awarasleep.com`.
-- Cloudflare blocks `E2EUI-Tests` on the API, so all tests use `E2EUI-Tests-Brands-CI` (since
-  2026-11-22).
+- Cloudflare blocks `E2EUI-Tests` on the API, so the `api` project uses `E2EUI-Tests-Brands-CI`
+  (`API_USER_AGENT`, since 2026-11-22). The browser and the catalog call keep `E2EUI-Tests`
+  (`UI_USER_AGENT`): the website accepts it.
 - The real body is `{ "status": "ok", "result": { "data": [...] } }`, so tests check `result.data`.
 
 ## Status
@@ -21,10 +22,12 @@ Deviations (documented in the README):
   POST/PUT/DELETE give 405). Findings, asserted as actual behaviour with a `finding` annotation:
   brand is required even with name (API-05); lang has no effect (API-06); brand ignores case, name
   doesn't (API-07a/b). Lists are capped at 200 items (`total_count` can be higher).
-- [x] UI: 17 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
-  UI-13/14/15; "on /mattress" means "URL contains /mattress". UI-02 (exact path) is a `@known-bug`.
-  Cut for the submission: UI-04, UI-18, UI-19, UI-20 (flaky, see README findings 3-4).
-  Unused IDs: UI-04, UI-10, UI-11, UI-17..20. **Ask before adding or removing UI cases.**
+- [x] UI: 19 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
+  UI-13 (UI-14/15 are its steps); "on /mattress" means the path is `/mattress` or `/mattresses/…`
+  (`MATTRESS_URL`). UI-02 (exact path) is a `@known-bug`. UI-25 (404) and UI-26 (stubbed failed
+  add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04, UI-18, UI-19, UI-20
+  (flaky, see README findings 4-5). Planned but not automated: UI-10, 11, 17, 23, 24.
+  **Ask before adding or removing UI cases.**
 - Cart-via-API work for UI-19/20 is in `git stash` ("wip: cart tests via API"), not stable: the cart
   is chosen by the `authentication` header (decoded `authToken` cookie), and an API write before the
   page's first `GET /carts/my` can land in a cart the page doesn't use.
@@ -34,7 +37,7 @@ Deviations (documented in the README):
 Update this checklist as parts are completed.
 
 ## Stack
-Playwright Test + TypeScript (Node 20+), dotenv, zod, allure-playwright + Allure 3 CLI (no Java),
+Playwright Test + TypeScript (Node 22+, CI on 24), dotenv, zod, allure-playwright + Allure 3 CLI (no Java),
 ESLint (type-aware) + Prettier. CI test jobs and the local `Dockerfile` use
 `mcr.microsoft.com/playwright:v<version>-noble`; the tag must match `@playwright/test` in
 `package-lock.json` (`npm run check:playwright-image`). Update both when upgrading Playwright.
@@ -53,8 +56,9 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - Await every promise. No `waitForTimeout`, no secrets, no commented-out code.
 - **Never weaken or change an assertion to make a test pass.** Report whether a failure is a test
   problem or a real bug.
-- Known site bug: keep the strict assertion, use `test.fail(title, knownBug(<#>, '<desc>'), body)`
-  (`src/fixtures/knownBug.ts`).
+- Known site bug: keep the strict assertion, use
+  `test.fail(title, knownBug(<#>, '<desc>', '<text of the expected error>'), body)`
+  (`src/fixtures/knownBug.ts`). Any other failure is reported as broken by `mark-known-bugs.mjs`.
 - Keep assignment tests in their own `describe`, apart from extras.
 
 ### API
@@ -70,8 +74,8 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
   objects except readiness checks and retry waits.
 - Locators: `getByRole` (with name) → `getByLabel` → `getByTestId` → `getByText`. No XPath or long
   CSS chains; scope locators when text isn't unique. Web-first assertions only.
-- The `page` fixture blocks Dynamic Yield scripts and dismisses overlays (cookie banner, promo,
-  protection plan). Opt out per test with `test.use({ autoDismissOverlays: [...] })`.
+- The `page` fixture blocks Dynamic Yield scripts (the promo popup), pre-sets the cookie consent and
+  dismisses overlays (cookie banner fallback, protection plan).
 - Expected prices come from the catalog API (`mattressCatalog` fixture), not hard-coded.
 - "Added to cart" = add-to-cart API response + cart line item (name, size, price, qty) + header
   counter.
@@ -80,7 +84,8 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 ## Reporting
 `npm run allure:generate` runs `scripts/mark-known-bugs.mjs` first: expected `@known-bug` failures
 become `failed` with a `knownBug` label, which the `allurerc.mjs` categories and `ci-summary.mjs`
-match on. History is in `history.jsonl` (git-ignored; kept with the published report in CI).
+match on; a failure without the expected error becomes `broken`. Allure environment info (URLs,
+User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `history.jsonl` (git-ignored; kept with the published report in CI).
 
 ## CI/CD (`.github/workflows/ci.yml`)
 - Runs on push (any branch), fork PRs, nightly (03:00 UTC, `main`) and manual `workflow_dispatch`
@@ -105,8 +110,9 @@ relevant tests before saying you're done.
 
 ## README
 Must cover: CI badge + Allure link, overview, stack, prerequisites, install, run commands, reports,
-CI/CD + artifacts, structure + design decisions, findings, AI usage. Every command must work in a
+CI/CD + artifacts, structure + design decisions, findings, AI usage. Keep it short; details go to
+`docs/ci.md` and `docs/development.md`. Every command must work in a
 clean clone. The "AI usage" section is in the author's voice: the user owns its wording.
 
 ## Planned
-Allure environment info (URLs, browser, Node, User-Agent); scripts `format`, `allure:serve`.
+Scripts `format`, `allure:serve`.
