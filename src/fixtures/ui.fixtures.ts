@@ -8,15 +8,10 @@ import { ProductPage } from '../pages/ProductPage';
 interface UiOptions {
   /** Popups to dismiss automatically. Remove one to test that popup directly. */
   autoDismissOverlays: readonly Overlay[];
-  /**
-   * Block Dynamic Yield's third-party client scripts. They inject the "Memorial Day Sale" email
-   * popup at random times, on top of other dialogs. Third-party widgets are out of scope
-   * (docs/test-plan.md). The app's own A/B flags (`/api/dynamic-yield/*` on the storefront) are
-   * not affected, so the app's upsell dialogs still appear.
-   */
-  blockMarketingScripts: boolean;
 }
 
+// Dynamic Yield's client scripts inject an email popup at random times (third-party, out of scope).
+// The app's own A/B flags (`/api/dynamic-yield/*`) are not blocked, so its upsell dialogs still show.
 const MARKETING_SCRIPT_HOSTS = /^https:\/\/(cdn|st)\.dynamicyield\.com\//;
 
 interface UiFixtures {
@@ -28,12 +23,9 @@ interface UiFixtures {
 
 export const uiTest = base.extend<UiOptions & UiFixtures>({
   autoDismissOverlays: [OVERLAYS, { option: true }],
-  blockMarketingScripts: [true, { option: true }],
 
-  page: async ({ page, baseURL, autoDismissOverlays, blockMarketingScripts }, use) => {
-    if (blockMarketingScripts) {
-      await page.route(MARKETING_SCRIPT_HOSTS, (route) => route.abort());
-    }
+  page: async ({ page, baseURL, autoDismissOverlays }, use) => {
+    await page.route(MARKETING_SCRIPT_HOSTS, (route) => route.abort());
     if (autoDismissOverlays.includes('cookieBanner') && baseURL) {
       // OneTrust skips the banner when this cookie is present. Dismissing it with a click instead
       // moves the mouse and closes hover menus mid-test. The handler below stays as a fallback.

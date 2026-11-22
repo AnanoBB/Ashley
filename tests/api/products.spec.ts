@@ -1,8 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { expectProducts } from './support';
-
-const BRAND = 'awara';
-const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
+import { BRAND, expectProducts, PRODUCT_NAME } from './support';
 
 test.describe('Products API: assignment', { tag: ['@api', '@smoke'] }, () => {
   test('API-01 GET /products by brand returns a non-empty list of that brand', async ({

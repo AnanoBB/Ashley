@@ -33,9 +33,8 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
     }) => {
       const mattress = mattressCatalog[key];
 
-      await test.step('Open the mattresses menu and click the card', async () => {
-        await homePage.header.clickMattressMenuCard(mattress.menuCardTestId);
-      });
+      await test.step('Open the mattresses menu and click the card', () =>
+        homePage.header.clickMattressMenuCard(mattress.menuCardTestId));
 
       await test.step(`${mattress.title} product page is shown`, async () => {
         await expect(page).toHaveURL(mattress.path);
@@ -74,9 +73,8 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
     mattressesPage,
     mattressCatalog,
   }) => {
-    await test.step('Open the menu and click "Shop All Mattresses"', async () => {
-      await homePage.header.clickShopAllMattresses();
-    });
+    await test.step('Open the menu and click "Shop All Mattresses"', () =>
+      homePage.header.clickShopAllMattresses());
 
     await test.step('Listing shows every mattress', async () => {
       await expect(page).toHaveURL('/mattresses');

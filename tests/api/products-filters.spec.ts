@@ -1,8 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { expectApiError, expectProducts } from './support';
-
-const BRAND = 'awara';
-const PRODUCT_NAME = 'the-awara-hybrid-mattress-30';
+import { BRAND, expectApiError, expectProducts, PRODUCT_NAME } from './support';
 
 test.describe('Products API: filter behaviour', { tag: ['@api', '@regression'] }, () => {
   test('API-03 an unknown brand is rejected with 400', async ({ productsApi }) => {

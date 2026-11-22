@@ -1,7 +1,5 @@
 import { test, expect } from '../../src/fixtures';
-import { expectApiError, expectProducts } from './support';
-
-const BRAND = 'awara';
+import { BRAND, expectApiError, expectProducts } from './support';
 
 test.describe('Products API: negative cases', { tag: ['@api', '@regression', '@negative'] }, () => {
   test('API-09 no query parameters is rejected with 400', async ({ productsApi }) => {
