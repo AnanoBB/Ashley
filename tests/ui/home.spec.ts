@@ -36,7 +36,11 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
 test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
   test.fail(
     'UI-02 hero "Shop Mattress" opens exactly /mattress',
-    knownBug(1, 'hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress'),
+    knownBug(
+      1,
+      'hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
+      'toHaveURL',
+    ),
     async ({ page, homePage }) => {
       await test.step('Open the home page', () => homePage.goto());
 

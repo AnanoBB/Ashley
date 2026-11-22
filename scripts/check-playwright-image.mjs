@@ -1,9 +1,7 @@
 // Fails when the Playwright Docker image tag in the Dockerfile or in the CI workflow doesn't match
 // the @playwright/test version in package-lock.json. The browsers in the image are built for one
 // Playwright version, so a mismatch breaks the UI tests (or quietly tests another browser build).
-import console from 'node:console';
 import { readFileSync } from 'node:fs';
-import process from 'node:process';
 
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
 const expected = lock.packages['node_modules/@playwright/test']?.version;
