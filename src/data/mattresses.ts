@@ -77,5 +77,9 @@ export function sizeOf(mattress: Mattress, title: string): MattressSize {
 }
 
 export function cheapestSize(mattress: Mattress): MattressSize {
-  return mattress.sizes.reduce((min, size) => (size.priceCents < min.priceCents ? size : min));
+  const [first, ...rest] = mattress.sizes;
+  if (!first) {
+    throw new Error(`${mattress.title} has no sizes`);
+  }
+  return rest.reduce((min, size) => (size.priceCents < min.priceCents ? size : min), first);
 }
