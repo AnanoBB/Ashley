@@ -61,7 +61,10 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       await test.step(`Product page shows ${expectedPrice} for ${cheapest.title}`, async () => {
         await productPage.goto(mattress.path);
         await productPage.selectSize(cheapest.title);
-        await expect(productPage.selectedSize).toHaveText(cheapest.title);
+        await expect(
+          productPage.selectedSize,
+          'the picked size stays selected (bug #30)',
+        ).toHaveText(cheapest.title);
         await expect(productPage.price).toHaveText(expectedPrice);
       });
     });
@@ -83,6 +86,19 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       }
     });
   });
+
+  test.fail(
+    'UI-28 the mattresses menu opens on the first hover once the page is shown',
+    knownBug(31, 'the menu ignores hovers for 3-9 s after the page appears', 'Received: "false"'),
+    async ({ homePage }) => {
+      await test.step('Hover "Mattresses" once, as soon as the home page is shown', () =>
+        homePage.header.hoverMattresses());
+
+      await test.step('The menu opens', async () => {
+        await expect(homePage.header.mattressesToggle).toHaveAttribute('aria-expanded', 'true');
+      });
+    },
+  );
 
   test.fail(
     'UI-09 header "Mattresses" link opens the mattress listing',

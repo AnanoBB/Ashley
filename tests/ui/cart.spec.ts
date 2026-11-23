@@ -1,9 +1,23 @@
-import { test, expect } from '../../src/fixtures';
+import { errors, type Request } from '@playwright/test';
+import { test, expect, knownBug } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
 import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
 
 const DEFAULT_SIZE = 'Queen';
+
+/**
+ * The size in a buy-box offers request: `GET …/applicable-offers/v2?productSelection=<JSON>`, which
+ * the page sends for the one size it has selected (unlike `/carts/quote`, which batches many carts).
+ */
+function selectedSizeInOffers(request: Request): string | undefined {
+  const selection = new URL(request.url()).searchParams.get('productSelection');
+  const items = selection ? (JSON.parse(selection) as { properties?: { Size?: string } }[]) : [];
+  return items[0]?.properties?.Size;
+}
+
+/** The reset came 1-3 s after the quote in every reproduction (2026-11-23). */
+const RESET_WINDOW = 15_000;
 
 test.describe(
   'Assignment flow: home → Shop Mattress → add to cart',
@@ -101,7 +115,9 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
     });
 
     await test.step(`Price updates to ${kingPrice}`, async () => {
-      await expect(productPage.selectedSize).toHaveText(king.title);
+      await expect(productPage.selectedSize, 'the picked size stays selected (bug #30)').toHaveText(
+        king.title,
+      );
       await expect(productPage.price).toHaveText(kingPrice);
     });
 
@@ -200,6 +216,54 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
         await cartPage.goto();
         await expect(cartPage.emptyState).toBeVisible();
         await expect(cartPage.lineItems).toHaveCount(0);
+      });
+    },
+  );
+
+  // The quote is held back to make the race reproducible: on the QA site it is sometimes this late.
+  test.fail(
+    'UI-27 a size picked before the price quote arrives stays selected',
+    knownBug(30, 'a late price quote resets the picked size to Queen', 'Received: "queen"'),
+    async ({ page, productPage, mattressCatalog }) => {
+      const mattress = mattressCatalog.classic;
+      const king = sizeOf(mattress, 'King');
+      let releaseQuotes: () => void = () => undefined;
+      const quotesReleased = new Promise<void>((resolve) => {
+        releaseQuotes = resolve;
+      });
+
+      await test.step('The price quote is slow (GET /carts/quote held until a size is picked)', () =>
+        page.route('**/carts/quote**', async (route) => {
+          await quotesReleased;
+          await route.fallback();
+        }));
+
+      await test.step(`Open ${mattress.title} and pick King`, async () => {
+        await productPage.goto(mattress.path);
+        await productPage.selectSize(king.title);
+        await expect(productPage.selectedSize).toHaveText(king.title);
+        await expect(productPage.price).toHaveText(formatUsd(king.priceCents));
+      });
+
+      await test.step('When the quote arrives, the page keeps King selected', async () => {
+        // "Keeps" needs a window: the first offers request for another size within it is the reset.
+        // Registered first, so only requests sent after the release count.
+        const sizeChange = page
+          .waitForRequest(
+            (request) => {
+              if (!request.url().includes('applicable-offers')) return false;
+              return selectedSizeInOffers(request) !== king.value;
+            },
+            { timeout: RESET_WINDOW },
+          )
+          .then(selectedSizeInOffers, (error: unknown) => {
+            // No other size requested within the window: the page kept King.
+            if (error instanceof errors.TimeoutError) return king.value;
+            throw error;
+          });
+        releaseQuotes();
+        expect(await sizeChange, 'size the page selects after the quote arrives').toBe(king.value);
+        await expect(productPage.selectedSize).toHaveText(king.title);
       });
     },
   );
