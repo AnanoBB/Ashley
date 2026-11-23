@@ -8,4 +8,6 @@ export const env = {
   // Cloudflare blocks `E2EUI-Tests` on the API host only (403); see README "User-Agent".
   apiUserAgent: process.env.API_USER_AGENT || 'E2EUI-Tests-Brands-CI',
   isCI: !!process.env.CI && process.env.CI !== 'false',
+  // Runs the @quarantine tests instead of skipping them (npm run test:quarantined).
+  runQuarantined: ['1', 'true'].includes(process.env.RUN_QUARANTINED ?? ''),
 } as const;

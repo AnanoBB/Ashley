@@ -2,6 +2,7 @@
 // $GITHUB_STEP_SUMMARY. With retries there is one result per attempt: the last attempt counts,
 // and a test that passed after a failed or broken attempt is reported as flaky. Known bugs
 // (@known-bug, failing as expected) get their own column and are not listed as problems.
+// Quarantined tests (@quarantine, skipped on purpose) are listed with their reason.
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -22,6 +23,8 @@ const COLUMNS = ['passed', 'failed', 'broken', 'skipped', 'flaky', 'known bug'];
 const byProject = new Map();
 const problems = [];
 const knownBugs = [];
+const quarantined = [];
+const QUARANTINE_STEP = 'quarantine: ';
 
 for (const attempts of attemptsByTest.values()) {
   attempts.sort((a, b) => a.stop - b.stop);
@@ -41,6 +44,15 @@ for (const attempts of attemptsByTest.values()) {
   const counts = byProject.get(project) ?? Object.fromEntries(COLUMNS.map((column) => [column, 0]));
   counts[outcome] = (counts[outcome] ?? 0) + 1;
   byProject.set(project, counts);
+  const isQuarantined = last.labels.some(
+    (label) => label.name === 'tag' && label.value.replace(/^@/, '') === 'quarantine',
+  );
+  if (isQuarantined && last.status === 'skipped') {
+    const reason = (last.steps ?? [])
+      .find((step) => step.name.startsWith(QUARANTINE_STEP))
+      ?.name.slice(QUARANTINE_STEP.length);
+    quarantined.push(`- \`${project}\` ${last.name}: ${reason ?? 'no reason given'}`);
+  }
   if (outcome === 'known bug') {
     knownBugs.push(`- **known bug** \`${project}\` ${last.name}`);
   } else if (outcome !== 'passed' && outcome !== 'skipped') {
@@ -61,6 +73,13 @@ if (byProject.size === 0) {
   }
   if (knownBugs.length > 0) {
     lines.push('', 'Known product bugs (fail as expected, see docs/exploration.md):', ...knownBugs);
+  }
+  if (quarantined.length > 0) {
+    lines.push(
+      '',
+      'Quarantined (skipped on purpose; run them with `npm run test:quarantined`):',
+      ...quarantined.sort(),
+    );
   }
 }
 process.stdout.write(`${lines.join('\n')}\n`);
