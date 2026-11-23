@@ -62,18 +62,19 @@ it in the reports and run it alone. All cases, with priorities, are in
 | `@smoke`           | The assignment itself                     | 5     |
 | `@regression`      | Everything beyond the assignment          | 30    |
 | `@negative`        | Bad input and failure handling            | 7     |
-| `@known-bug`       | Checks a known site bug, expected to fail | 4     |
+| `@known-bug`       | Checks a known site bug, expected to fail | 3     |
+| `@quarantine`      | Skipped, with the reason in the report    | 1     |
 | `@api`, `@ui`      | Layer                                     | 14/21 |
 | `@cart`, `@header` | UI feature area                           | 7/10  |
 
-| Area                            | Tests                                                                                                                                                                                                                                                        |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **API, assignment** (`@smoke`)  | API-01 brand list: 200, not empty, every product is `awara`. API-02 name query: 200, exactly 1 product, and it is `the-awara-hybrid-mattress-30`                                                                                                             |
-| **API, filters**                | API-03 unknown brand → 400. API-04 unknown name → empty. API-05 name without brand → 400. API-06 `lang` has no effect. API-07a/b brand ignores case, name doesn't. API-08 name result = its brand-list entry                                                 |
-| **API, negative**               | API-09 no parameters → 400. API-10 empty brand → 400. API-11 ×3 SQL-like, 3000-char or empty name → 200 and empty, never 5xx                                                                                                                                 |
-| **UI, assignment** (`@smoke`)   | UI-01 home page opens (HTTP 200, title, hero, logo). UI-03 hero "Shop Mattress" opens a mattress page. UI-13 the whole flow, below                                                                                                                           |
-| **UI, header and product page** | UI-02 hero goes to exactly `/mattress` (known bug). UI-05…08 mega menu, cards, prices, "Shop All". UI-09 header link (known bug). UI-28 the menu opens on the first hover (known bug). UI-12 default size and price. UI-16 a different size reaches the cart |
-| **UI, cart and errors**         | UI-21 cart survives a reload. UI-22 a new browser starts with an empty cart. UI-25 unknown URL → 404 page. UI-26 a failed add-to-cart (stubbed 500) leaves the cart empty. UI-27 a size picked before the price quote stays selected (known bug)             |
+| Area                            | Tests                                                                                                                                                                                                                                                                   |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **API, assignment** (`@smoke`)  | API-01 brand list: 200, not empty, every product is `awara`. API-02 name query: 200, exactly 1 product, and it is `the-awara-hybrid-mattress-30`                                                                                                                        |
+| **API, filters**                | API-03 unknown brand → 400. API-04 unknown name → empty. API-05 name without brand → 400. API-06 `lang` has no effect. API-07a/b brand ignores case, name doesn't. API-08 name result = its brand-list entry                                                            |
+| **API, negative**               | API-09 no parameters → 400. API-10 empty brand → 400. API-11 ×3 SQL-like, 3000-char or empty name → 200 and empty, never 5xx                                                                                                                                            |
+| **UI, assignment** (`@smoke`)   | UI-01 home page opens (HTTP 200, title, hero, logo). UI-03 hero "Shop Mattress" opens a mattress page. UI-13 the whole flow, below                                                                                                                                      |
+| **UI, header and product page** | UI-02 hero goes to exactly `/mattress` (known bug). UI-05…08 mega menu, cards, prices, "Shop All". UI-09 header link (known bug). UI-28 the menu opens on the first hover (quarantined, bug #31). UI-12 default size and price. UI-16 a different size reaches the cart |
+| **UI, cart and errors**         | UI-21 cart survives a reload. UI-22 a new browser starts with an empty cart. UI-25 unknown URL → 404 page. UI-26 a failed add-to-cart (stubbed 500) leaves the cart empty. UI-27 a size picked before the price quote stays selected (known bug)                        |
 
 Every API test checks **status → `Content-Type: application/json` → zod schema**, then its own
 assertions. UI-13 checks "added to the cart" three ways: the add-to-cart API call (200, schema,
@@ -86,7 +87,7 @@ assertions. UI-13 checks "added to the cart" three ways: the add-to-cart API cal
 - **Expected prices** come from the storefront's own catalog API (`/api/catalog/products`), the
   source the page renders from. The UI tests therefore catch display and cart bugs, not wrong prices
   in the catalog itself.
-- **Expected to fail:** UI-02, UI-09, UI-27 and UI-28 check real site bugs with `test.fail()`. They pass while the
+- **Expected to fail:** UI-02, UI-09 and UI-27 check real site bugs with `test.fail()`. They pass while the
   bug exists (a ✘ in the terminal is normal) and turn red when it's fixed. In Allure they show red
   under **Known product bugs**, so they're never hidden among the passes, while CI stays green.
 
@@ -182,19 +183,19 @@ docs/                      exploration, test plan, API overview, CI details, dev
 
 ## Design decisions
 
-| Decision                                                                         | Why                                                                                                                                                                                                                        |
-| -------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Checked the real responses before writing schemas                                | That's how the `result.data` path, the User-Agent block and the host typo were found                                                                                                                                       |
-| Page objects + fixtures; specs import `test` / `expect` only from `src/fixtures` | Specs read like the test plan and hold the assertions; selectors live in one place (ESLint enforces it)                                                                                                                    |
-| Locators by role / label / test id, no XPath                                     | They read like the page and survive layout changes                                                                                                                                                                         |
-| Unexpected API behaviour: assert what it does, add a `finding` note              | The behaviour is documented and guarded; a deliberately red test would just be noise                                                                                                                                       |
-| Known site bugs: keep the strict assertion, mark `test.fail()` + `knownBug()`    | The bug stays visible (red in Allure) without failing CI; any other failure fails CI                                                                                                                                       |
-| Popups: block Dynamic Yield scripts, pre-set the cookie consent, handle the rest | They appear at random times and steal clicks; tests stay about behaviour                                                                                                                                                   |
-| No fixed sleeps; waits on conditions, with long timeouts only for slow loads     | The QA site's buy box and menu can take 20 s or more; waits end as soon as the condition is true                                                                                                                           |
-| One action per step, no click or hover retry loops                               | A click or hover the site ignores, or a choice it resets, is a bug: the test fails and names it. One exception: the menu-content tests hover again, because UI-28 already reports that the menu ignores early hovers (#31) |
-| 2 workers; 1 retry in CI, none locally                                           | The shared QA site times out with 3 browsers. A CI retry shows up as flaky; locally, flakiness fails                                                                                                                       |
-| Tests are not retried until green                                                | A test made unstable by the test itself is fixed or removed. One made unstable by a site bug stays and names the bug (UI-07 and UI-16 hit #30 about 1 run in 10)                                                           |
-| CI and local Docker use the same Playwright image                                | Same OS, browser and fonts; a CI-only failure can be reproduced on any machine                                                                                                                                             |
+| Decision                                                                         | Why                                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checked the real responses before writing schemas                                | That's how the `result.data` path, the User-Agent block and the host typo were found                                                                                                                            |
+| Page objects + fixtures; specs import `test` / `expect` only from `src/fixtures` | Specs read like the test plan and hold the assertions; selectors live in one place (ESLint enforces it)                                                                                                         |
+| Locators by role / label / test id, no XPath                                     | They read like the page and survive layout changes                                                                                                                                                              |
+| Unexpected API behaviour: assert what it does, add a `finding` note              | The behaviour is documented and guarded; a deliberately red test would just be noise                                                                                                                            |
+| Known site bugs: keep the strict assertion, mark `test.fail()` + `knownBug()`    | The bug stays visible (red in Allure) without failing CI; any other failure fails CI                                                                                                                            |
+| Popups: block Dynamic Yield scripts, pre-set the cookie consent, handle the rest | They appear at random times and steal clicks; tests stay about behaviour                                                                                                                                        |
+| No fixed sleeps; waits on conditions, with long timeouts only for slow loads     | The QA site's buy box and menu can take 20 s or more; waits end as soon as the condition is true                                                                                                                |
+| One action per step, no click or hover retry loops                               | A click or hover the site ignores, or a choice it resets, is a bug: the test fails and names it. One exception: the menu-content tests hover again, because the menu ignores early hovers (bug #31, documented) |
+| 2 workers; 1 retry in CI, none locally                                           | The shared QA site times out with 3 browsers. A CI retry shows up as flaky; locally, flakiness fails                                                                                                            |
+| Tests are not retried until green                                                | A test made unstable by the test itself is fixed or removed. One made unstable by a site bug stays and names the bug (UI-07 and UI-16 hit #30 about 1 run in 10)                                                |
+| CI and local Docker use the same Playwright image                                | Same OS, browser and fonts; a CI-only failure can be reproduced on any machine                                                                                                                                  |
 
 ## Findings
 
@@ -210,7 +211,7 @@ docs/                      exploration, test plan, API overview, CI details, dev
 | 8   | API: `brand=AWARA` works, an uppercase `name` finds nothing; an empty `name` matches nothing instead of being ignored      | API-07b, API-11            |
 | 9   | API: lists are capped at 200 items while `total_count` can be higher (brand `nectar`: 1025)                                | API-07a, API-08 skip if so |
 | 10  | Product page: a size picked before the price quote arrives is reset to Queen                                               | UI-27, exploration #30     |
-| 11  | Header: the menu ignores hovers for 3–9 s after the page appears                                                           | UI-28, exploration #31     |
+| 11  | Header: the menu ignores hovers for 3–9 s after the page appears                                                           | exploration #31            |
 
 Findings 4 and 5 made the cart "+" and "remove" tests fail at random, so those tests were left out
 rather than retried until green. [docs/exploration.md](docs/exploration.md) lists 31 possible issues

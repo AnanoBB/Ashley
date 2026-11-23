@@ -70,7 +70,7 @@ tag in the `Dockerfile` and in `.github/workflows/ci.yml`; the CI `lint` job run
 | `Executable doesn't exist` / browser not found | Run `npx playwright install --with-deps chromium`                                                |
 | API tests fail with **403**                    | The API User-Agent was changed or blocked; check `API_USER_AGENT` in `.env` (README, User-Agent) |
 | UI tests time out on page loads                | The shared QA site is slow or overloaded. Don't raise `--workers` above 2; rerun later           |
-| UI-02, UI-09, UI-27 and UI-28 show ✘           | Expected: they check known bugs and count as passed (README, What is tested)                     |
+| UI-02, UI-09 and UI-27 show ✘; UI-28 skipped   | Expected: they check known bugs and count as passed (README, What is tested)                     |
 | The Allure report shows old runs               | Local results add up; delete `allure-results/` before a run                                      |
 | `npm run allure:open` shows nothing            | Run `npm run allure:generate` first                                                              |
 | A test fails in CI but passes on your machine  | Run it in the CI image: `npm run test:docker -- -g "<test ID>"` ([Docker](#running-in-docker))   |
