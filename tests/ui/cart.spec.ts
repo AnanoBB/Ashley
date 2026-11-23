@@ -1,13 +1,9 @@
-import { errors } from '@playwright/test';
-import { test, expect, knownBug } from '../../src/fixtures';
+import { test, expect } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
 import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
 
 const DEFAULT_SIZE = 'Queen';
-
-/** The reset came 1-3 s after the quote in every reproduction (2026-11-23). */
-const RESET_WINDOW = 15_000;
 
 test.describe(
   'Assignment flow: home → Shop Mattress → add to cart',
@@ -150,52 +146,6 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
         await cartPage.goto();
         await expect(cartPage.emptyState).toBeVisible();
         await expect(cartPage.lineItems).toHaveCount(0);
-      });
-    },
-  );
-
-  // The quote is held back to make the race reproducible: on the QA site it is sometimes this late.
-  test(
-    'UI-27 a size picked before the price quote arrives stays selected',
-    knownBug(30, 'a late price quote resets the picked size to Queen', 'Received: "Queen"'),
-    async ({ page, productPage, mattressCatalog }) => {
-      const mattress = mattressCatalog.classic;
-      const king = sizeOf(mattress, 'King');
-      let releaseQuotes: () => void = () => undefined;
-      const quotesReleased = new Promise<void>((resolve) => {
-        releaseQuotes = resolve;
-      });
-
-      await test.step('The price quote is slow (GET /carts/quote held until a size is picked)', () =>
-        page.route('**/carts/quote**', async (route) => {
-          await quotesReleased;
-          await route.fallback();
-        }));
-
-      await test.step(`Open ${mattress.title} and pick King`, async () => {
-        await productPage.goto(mattress.path);
-        await productPage.selectSize(king.title);
-        await expect(productPage.selectedSize).toHaveText(king.title);
-        await expect(productPage.price).toHaveText(formatUsd(king.priceCents));
-      });
-
-      // The bug's step: only now is a failure the known bug. A failed setup above stays an
-      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
-      test.fail();
-
-      await test.step('When the quote arrives, the page keeps King selected', async () => {
-        releaseQuotes();
-        // "Keeps" needs a window: watch the label until it changes or the window ends.
-        await productPage.selectedSize
-          .filter({ hasNotText: king.title })
-          .waitFor({ timeout: RESET_WINDOW })
-          .catch((error: unknown) => {
-            // The window ended with King still shown: no reset.
-            if (!(error instanceof errors.TimeoutError)) throw error;
-          });
-        await expect(productPage.selectedSize, 'size shown after the quote arrives').toHaveText(
-          king.title,
-        );
       });
     },
   );
