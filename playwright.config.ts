@@ -10,9 +10,9 @@ export default defineConfig({
   // time out on page loads; 2 is both stable and faster.
   workers: 2,
   forbidOnly: env.isCI,
-  // One retry absorbs a rare QA-env hiccup (slow page loads), locally as in CI; the HTML report
-  // and the CI run summary still show a test that passed on retry as flaky.
-  retries: 1,
+  // CI: one retry absorbs a rare QA-env hiccup, and the run summary still counts it as flaky.
+  // Locally none, so a flaky test fails in front of its author.
+  retries: env.isCI ? 1 : 0,
   reporter: [
     ['list'],
     ['html', { open: 'never' }],
