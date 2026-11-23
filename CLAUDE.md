@@ -53,8 +53,9 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - Act like a user: one action per step, no click/hover retry loops, no waiting on network calls the
   user can't see. A click the site ignores or a choice it resets is a bug: the test fails and names
   it. A test that a site bug makes fail at random is left out and the bug documented, not retried.
-  Only exception: `Header.openMattressesMenu` hovers again for the menu-content tests, because
-  the menu ignores early hovers (#31, documented).
+  Only exception: `Header.openMattressesMenu` hovers again until the menu opens
+  (every menu test uses it: UI-05, UI-06, UI-08), because the menu ignores early hovers
+  (#31, documented).
 - **Never weaken or change an assertion to make a test pass.** Report whether a failure is a test
   problem or a real bug.
 - Known site bug: keep the strict assertion, tag `@known-bug` with a `known bug` annotation naming
@@ -112,6 +113,3 @@ saying you're done.
 Must cover: CI badge + Allure link, overview, stack, prerequisites, install, run commands, reports,
 CI/CD + artifacts, structure + design decisions, findings, AI usage. Keep it short. Every command
 must work in a clean clone. The "AI usage" section is in the author's voice: the user owns its wording.
-
-## Planned
-Scripts `format`, `allure:serve`.

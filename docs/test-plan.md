@@ -112,7 +112,7 @@ Considered but not automated:
 | UI-06 | UI    | Each mega menu card opens the matching product page (h1 = card name)                                                 | Positive | P2       | Data-driven ×3                                                                                                       |
 | UI-07 | UI    | The "from" price on each mega menu card ($499+/$599+/$749+) equals the cheapest size on its product page             | Positive | P2       | Data-driven ×3                                                                                                       |
 | UI-08 | UI    | "Shop All Mattresses" opens `/mattresses` and lists all 3 mattresses                                                 | Positive | P2       |                                                                                                                      |
-| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                                  | Positive | P2       | **Known bug #13**: it opens a single product. Marked `test.fail()`.                                                  |
+| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                                  | Positive | P2       | **Known bug #13**: it opens a single product. Cut, see "Not automated".                                              |
 | UI-10 | UI    | The logo returns to the home page from a product page                                                                | Positive | P3       |                                                                                                                      |
 | UI-11 | UI    | The product page `<title>` matches its h1 (all 3 mattresses)                                                         | Edge     | P3       | **Known bug #22** (Premier)                                                                                          |
 
@@ -139,7 +139,8 @@ Considered but not automated:
 | UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Bug #31: reproduces only on slow page loads                                   |
 
 **Total: 40 cases.** 10 are P1 (the assignment plus the core path), 21 are P2 and 9 are P3. For this
-assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
+assignment, the plan was to automate all P1 cases, then P2 as time allows; two P1 cases (UI-04, UI-12) were
+cut, see "Not automated". P3 cases are a backlog.
 
 **Automated (27 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
 08, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 21, 22 (its second step
