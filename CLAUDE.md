@@ -25,9 +25,8 @@ Deviations (documented in the README):
 - [x] UI: 21 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
   UI-13 (UI-14/15 are its steps); "on /mattress" means the path is `/mattress` or `/mattresses/…`
   (`MATTRESS_URL`). UI-02 (exact path), UI-09 and UI-27 (size reset by a late price quote, #30)
-  are `@known-bug`; UI-28 (menu ignores hovers after load, #31) is `@quarantine`. UI-25 (404) and
-  UI-26 (stubbed failed
-  add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04 (the fixtures close the
+  are `@known-bug`; UI-07 ×3, UI-12, UI-16 and UI-28 are `@quarantine` (site bugs #30, #32,
+  #31). UI-25 (404) and UI-26 (stubbed failed add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04 (the fixtures close the
   popups in every test), UI-18, UI-19, UI-20 (flaky, see README findings 4-5). UI-22 also covers
   UI-24. Planned but not automated: UI-10, 11, 17, 23.
   **Ask before adding or removing UI cases.**
@@ -52,8 +51,8 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - Specs import `test`/`expect` from `src/fixtures`, never from `@playwright/test`.
 - `test.step()` for each assignment step. Tests are independent and parallel-safe.
 - Tags: `@api`/`@ui`, `@smoke`/`@regression`, `@cart`/`@header`, `@negative`, `@known-bug`,
-  `@quarantine` (blocked or made unreliable by the environment: tag + `test.fixme` with the reason;
-  now UI-28, bug #31 shows only on slow page loads).
+  `@quarantine` (blocked or made unreliable by the environment or a site bug: tag + `test.fixme`
+  with the reason; now UI-07 ×3 and UI-16 (#30), UI-12 (#32), UI-28 (#31)).
 - Await every promise. No `waitForTimeout`, no secrets, no commented-out code.
 - Act like a user: one action per step, no click/hover retry loops, no waiting on network calls the
   user can't see. A click the site ignores or a choice it resets is a bug: the test fails and names

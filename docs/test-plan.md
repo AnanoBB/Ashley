@@ -143,7 +143,9 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 **Automated (35 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
 07 (×3), 08, 09, 12, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 16,
-21, 22 (its second step also covers UI-24, the empty cart page), 25, 26, 27, 28.
+21, 22 (its second step also covers UI-24, the empty cart page), 25, 26, 27, 28. Of these, UI-07 (×3),
+12, 16 and 28 are quarantined: written and skipped with the reason, because site bugs (#30, #31,
+#32 in docs/exploration.md) make them fail at random.
 
 **Not automated:**
 

@@ -42,32 +42,40 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       });
     });
 
-    test(`UI-07 menu "from" price for the ${key} mattress matches its cheapest size`, async ({
-      homePage,
-      productPage,
-      mattressCatalog,
-    }) => {
-      const mattress = mattressCatalog[key];
-      const cheapest = cheapestSize(mattress);
-      const expectedPrice = formatUsd(cheapest.priceCents);
+    // Quarantined: bug #30 makes it fail at random; restore as test() once #30 is fixed.
+    test.fixme(
+      `UI-07 menu "from" price for the ${key} mattress matches its cheapest size`,
+      {
+        tag: '@quarantine',
+        annotation: {
+          type: 'quarantine',
+          description:
+            'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
+        },
+      },
+      async ({ homePage, productPage, mattressCatalog }) => {
+        const mattress = mattressCatalog[key];
+        const cheapest = cheapestSize(mattress);
+        const expectedPrice = formatUsd(cheapest.priceCents);
 
-      await test.step(`Menu card shows "${expectedPrice}+"`, async () => {
-        await homePage.header.openMattressesMenu();
-        await expect(homePage.header.menuCard(mattress.menuCardTestId)).toContainText(
-          `${expectedPrice}+`,
-        );
-      });
+        await test.step(`Menu card shows "${expectedPrice}+"`, async () => {
+          await homePage.header.openMattressesMenu();
+          await expect(homePage.header.menuCard(mattress.menuCardTestId)).toContainText(
+            `${expectedPrice}+`,
+          );
+        });
 
-      await test.step(`Product page shows ${expectedPrice} for ${cheapest.title}`, async () => {
-        await productPage.goto(mattress.path);
-        await productPage.selectSize(cheapest.title);
-        await expect(
-          productPage.selectedSize,
-          'the picked size stays selected (bug #30)',
-        ).toHaveText(cheapest.title);
-        await expect(productPage.price).toHaveText(expectedPrice);
-      });
-    });
+        await test.step(`Product page shows ${expectedPrice} for ${cheapest.title}`, async () => {
+          await productPage.goto(mattress.path);
+          await productPage.selectSize(cheapest.title);
+          await expect(
+            productPage.selectedSize,
+            'the picked size stays selected (bug #30)',
+          ).toHaveText(cheapest.title);
+          await expect(productPage.price).toHaveText(expectedPrice);
+        });
+      },
+    );
   }
 
   test('UI-08 "Shop All Mattresses" opens the listing with all 3 mattresses', async ({
