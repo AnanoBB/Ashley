@@ -24,14 +24,12 @@ export class CartLineItem {
 }
 
 export class CartPage extends BasePage {
-  readonly heading: Locator;
   readonly lineItems: Locator;
   readonly total: Locator;
   readonly emptyState: Locator;
 
   constructor(page: Page) {
     super(page);
-    this.heading = page.getByRole('heading', { name: 'Your Cart', exact: true });
     this.lineItems = page.locator('[data-testid^="cart_item_"]');
     this.total = page.getByTestId('total_price');
     this.emptyState = page.getByTestId('empty_cart_section');
