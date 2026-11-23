@@ -1,51 +1,29 @@
 name: CI
 
 on:
-  # Every commit on every branch (not tag pushes).
+  # Every commit on every branch; its checks also show on the branch's pull request.
   push:
     branches: ['**']
-  pull_request:
-  # Nightly full regression on main (03:00 UTC): all tests, API + UI, no filter. It publishes the
-  # report, so it stays fresh without commits.
+  # Nightly full run on main (03:00 UTC), so the published report stays fresh without commits.
   schedule:
     - cron: '0 3 * * *'
-  # Manual run from the Actions tab ("Run workflow") or `gh workflow run ci.yml`, on any branch.
+  # Manual run from the Actions tab or `gh workflow run ci.yml --ref <branch>`.
   workflow_dispatch:
-    inputs:
-      project:
-        description: Which tests to run
-        type: choice
-        options: [all, api, ui]
-        default: all
-      grep:
-        description: 'Optional filter by tag or title, e.g. @smoke, @negative, UI-13'
-        type: string
-        required: false
 
-# - Push to main and nightly share one group, so two runs never restore and publish the Allure
-#   history at the same time. A push cancels a run in progress; a nightly waits for it.
-# - Other push and PR runs: a newer commit on the same branch cancels the older run.
-# - Manual runs get a group per run, so they are never cancelled or queued.
+# main publishes the report and its history, so its runs queue; elsewhere a newer commit cancels
+# the older run.
 concurrency:
-  group: >-
-    ${{ github.workflow }}-${{
-      (github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule')) && 'publish-main' ||
-      github.event_name == 'workflow_dispatch' && format('manual-{0}', github.run_id) ||
-      format('{0}-{1}', github.event_name, github.event.pull_request.number || github.ref)
-    }}
-  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 env:
-  # Push to main and the nightly run publish the report and keep the Allure history.
-  PUBLISH: ${{ github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') }}
+  PUBLISH: ${{ github.ref == 'refs/heads/main' }}
 
 jobs:
   lint:
-    # Every commit is already tested by the push event, so only run pull_request for PRs from forks.
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -73,14 +51,11 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    # API and UI tests both run in the official Playwright image, the same one the Dockerfile
-    # uses locally: Node, Chromium and its system libraries are already inside, so nothing is
-    # installed at run time. The tag must match @playwright/test (checked in the lint job).
-    # --ipc=host: Chromium needs more shared memory than Docker's 64 MB default.
+    # The official Playwright image, the same one the Dockerfile uses locally. Its tag must match
+    # @playwright/test (checked in the lint job). --ipc=host: Chromium needs more shared memory.
     container:
       image: mcr.microsoft.com/playwright:v1.65.1-noble
       options: --ipc=host
-    # Steps in a container default to sh; keep bash, as on the runner.
     defaults:
       run:
         shell: bash
@@ -88,13 +63,11 @@ jobs:
       # Let both projects finish so one failing project doesn't hide the other's results.
       fail-fast: false
       matrix:
-        # Both projects, unless a manual run picked one.
-        project: ${{ fromJSON(inputs.project == 'api' && '["api"]' || inputs.project == 'ui' && '["ui"]' || '["api","ui"]') }}
+        project: [api, ui]
     steps:
       - uses: actions/checkout@v7
 
-      # Node comes from the image (no setup-node), so CI and local Docker runs use the same one;
-      # setup-node's npm cache isn't available, so cache npm's download folder directly.
+      # Node comes from the image, so cache npm's download folder directly.
       - name: Cache npm downloads
         uses: actions/cache@v6
         with:
@@ -105,10 +78,7 @@ jobs:
         run: npm ci
 
       - name: Run ${{ matrix.project }} tests
-        env:
-          GREP: ${{ inputs.grep }}
-        # A filter may match only one project; the other then has no tests, which is fine.
-        run: npx playwright test --project="${{ matrix.project }}" ${GREP:+--grep "$GREP" --pass-with-no-tests}
+        run: npx playwright test --project=${{ matrix.project }}
 
       - name: Upload Allure results
         if: ${{ !cancelled() }}
@@ -138,9 +108,9 @@ jobs:
           retention-days: 14
 
   report:
-    needs: [lint, test]
+    needs: test
     # Report even when tests fail, but not when lint failed (then no tests ran).
-    if: ${{ !cancelled() && needs.lint.result == 'success' }}
+    if: ${{ !cancelled() && needs.test.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -164,15 +134,12 @@ jobs:
       # History is kept only for main, so trends compare main runs with each other.
       - name: Restore Allure history from the published report
         if: env.PUBLISH == 'true'
-        # The repo's Pages URL, from GITHUB_REPOSITORY (set on every event, also on a fork; the
-        # schedule event has no github.event.repository).
         run: curl -fsSL "https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/history.jsonl" -o history.jsonl || echo "No previous history, starting a new one."
 
       - name: Generate Allure report
-        run: npm run allure:generate
-
-      - name: Keep the history with the report
-        run: if [ -f history.jsonl ]; then cp history.jsonl allure-report/; fi
+        run: |
+          npm run allure:generate
+          if [ -f history.jsonl ]; then cp history.jsonl allure-report/; fi
 
       - name: Upload Allure report
         uses: actions/upload-artifact@v7
@@ -190,16 +157,12 @@ jobs:
   publish-report:
     needs: report
     # Publish the latest main report even when tests fail, so the failure can be read online.
-    # Push to main and the nightly run publish; filtered manual runs must not replace the full report.
-    if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'schedule') }}
+    if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       pages: write
       id-token: write
-    concurrency:
-      group: github-pages
-      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
