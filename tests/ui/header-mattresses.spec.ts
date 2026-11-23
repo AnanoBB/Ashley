@@ -87,9 +87,19 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
     });
   });
 
-  test.fail(
+  // Bug #31 only shows on a slow page load (3-9 s locally); on CI the first hover already works, so
+  // a known-bug check can't tell. Restore it as test.fail(…, knownBug(31, …, 'Received: "false"'))
+  // once the dead time can be reproduced on purpose (e.g. by holding the header's script).
+  test.fixme(
     'UI-28 the mattresses menu opens on the first hover once the page is shown',
-    knownBug(31, 'the menu ignores hovers for 3-9 s after the page appears', 'Received: "false"'),
+    {
+      tag: '@quarantine',
+      annotation: {
+        type: 'quarantine',
+        description:
+          'bug #31 (menu ignores hovers after load) reproduces only on slow page loads, not on CI',
+      },
+    },
     async ({ homePage }) => {
       await test.step('Hover "Mattresses" once, as soon as the home page is shown', () =>
         homePage.header.hoverMattresses());

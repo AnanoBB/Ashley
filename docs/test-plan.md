@@ -136,7 +136,7 @@ Considered but not automated:
 | UI-25 | UI    | An unknown URL returns 404 and shows the not-found page, whose "Back to home" link works                                        | Negative | P2       |                                                                               |
 | UI-26 | UI    | When `POST /carts/my/items` fails (stubbed 500), the shopper stays on the product page and the cart stays empty                 | Negative | P2       | Finding #29: no error message is shown                                        |
 | UI-27 | UI    | A size picked before the price quote (`GET /carts/quote`) arrives stays selected (quote held back to reproduce the race)        | Edge     | P2       | Known bug #30: the page resets it to Queen                                    |
-| UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Known bug #31: hovers are ignored for 3–9 s                                   |
+| UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Bug #31; quarantined: reproduces only on slow page loads                      |
 
 **Total: 40 cases.** 10 are P1 (the assignment plus the core path), 21 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
