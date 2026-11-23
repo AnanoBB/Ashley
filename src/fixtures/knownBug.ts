@@ -4,7 +4,9 @@ import type { TestDetails } from '@playwright/test';
 const BUG_LIST_URL = `https://github.com/${process.env.GITHUB_REPOSITORY ?? 'AnanoBB/Ashley'}/blob/main/docs/exploration.md#possible-bugs`;
 
 /**
- * Details for a test that checks a known site bug (use with `test.fail(title, details, body)`):
+ * Details for a test that checks a known site bug: `test(title, knownBug(…), body)`, with
+ * `test.fail()` called in the body right before the step that hits the bug, so a failed setup is
+ * an ordinary failure (retried in CI) and not reported as the bug. Adds
  * the `@known-bug` tag, a note naming the bug in docs/exploration.md and an issue link for Allure.
  * `expectedError` is text only the bug's failure message contains (e.g. the wrong URL the bug
  * lands on, not just the matcher name):

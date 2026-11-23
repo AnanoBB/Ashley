@@ -1,5 +1,5 @@
 import { errors } from '@playwright/test';
-import { test, expect, knownBug } from '../../src/fixtures';
+import { test, expect, knownBug, quarantine } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
 import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
@@ -72,18 +72,11 @@ test.describe(
 );
 
 test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] }, () => {
-  // Quarantined: fails at random when the size selector never appears; restore as test() once #32
+  // Quarantined: fails at random when the size selector never appears; remove quarantine() once #32
   // is explained.
-  test.fixme(
+  test(
     'UI-12 product page defaults to Queen with its catalog price',
-    {
-      tag: '@quarantine',
-      annotation: {
-        type: 'quarantine',
-        description:
-          'the product page sometimes shows no sizes for 45 s (bug #32, cause not found yet)',
-      },
-    },
+    quarantine('the product page sometimes shows no sizes for 45 s (bug #32, cause not found yet)'),
     async ({ productPage, mattressCatalog }) => {
       const mattress = mattressCatalog.classic;
 
@@ -100,17 +93,12 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
     },
   );
 
-  // Quarantined: bug #30 makes it fail at random; restore as test() once #30 is fixed.
-  test.fixme(
+  // Quarantined: bug #30 makes it fail at random; remove quarantine() once #30 is fixed.
+  test(
     'UI-16 a different size updates the price and reaches the cart',
-    {
-      tag: '@quarantine',
-      annotation: {
-        type: 'quarantine',
-        description:
-          'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
-      },
-    },
+    quarantine(
+      'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
+    ),
     async ({ productPage, cartPage, mattressCatalog }) => {
       const mattress = mattressCatalog.classic;
       const king = sizeOf(mattress, 'King');
@@ -230,7 +218,7 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
   );
 
   // The quote is held back to make the race reproducible: on the QA site it is sometimes this late.
-  test.fail(
+  test(
     'UI-27 a size picked before the price quote arrives stays selected',
     knownBug(30, 'a late price quote resets the picked size to Queen', 'Received: "Queen"'),
     async ({ page, productPage, mattressCatalog }) => {
@@ -253,6 +241,10 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
         await expect(productPage.selectedSize).toHaveText(king.title);
         await expect(productPage.price).toHaveText(formatUsd(king.priceCents));
       });
+
+      // The bug's step: only now is a failure the known bug. A failed setup above stays an
+      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
+      test.fail();
 
       await test.step('When the quote arrives, the page keeps King selected', async () => {
         releaseQuotes();

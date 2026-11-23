@@ -1,4 +1,4 @@
-import { test, expect, knownBug } from '../../src/fixtures';
+import { test, expect, knownBug, quarantine } from '../../src/fixtures';
 import { cheapestSize, MATTRESS_KEYS } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
 
@@ -42,17 +42,12 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       });
     });
 
-    // Quarantined: bug #30 makes it fail at random; restore as test() once #30 is fixed.
-    test.fixme(
+    // Quarantined: bug #30 makes it fail at random; remove quarantine() once #30 is fixed.
+    test(
       `UI-07 menu "from" price for the ${key} mattress matches its cheapest size`,
-      {
-        tag: '@quarantine',
-        annotation: {
-          type: 'quarantine',
-          description:
-            'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
-        },
-      },
+      quarantine(
+        'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
+      ),
       async ({ homePage, productPage, mattressCatalog }) => {
         const mattress = mattressCatalog[key];
         const cheapest = cheapestSize(mattress);
@@ -96,18 +91,13 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
   });
 
   // Bug #31 only shows on a slow page load (3-9 s locally); on CI the first hover already works, so
-  // a known-bug check can't tell. Restore it as test.fail(…, knownBug(31, …, 'Received: "false"'))
+  // a known-bug check can't tell. Restore it as a known-bug test (knownBug(31, …, 'Received: "false"'))
   // once the dead time can be reproduced on purpose (e.g. by holding the header's script).
-  test.fixme(
+  test(
     'UI-28 the mattresses menu opens on the first hover once the page is shown',
-    {
-      tag: '@quarantine',
-      annotation: {
-        type: 'quarantine',
-        description:
-          'bug #31 (menu ignores hovers after load) reproduces only on slow page loads, not on CI',
-      },
-    },
+    quarantine(
+      'bug #31 (menu ignores hovers after load) reproduces only on slow page loads, not on CI',
+    ),
     async ({ homePage }) => {
       await test.step('Hover "Mattresses" once, as soon as the home page is shown', () =>
         homePage.header.hoverMattresses());
@@ -118,7 +108,7 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
     },
   );
 
-  test.fail(
+  test(
     'UI-09 header "Mattresses" link opens the mattress listing',
     // `/mattress"` is the URL the bug lands on; the expected `/mattresses"` doesn't contain it.
     knownBug(13, 'the link opens /mattress (one product), not /mattresses', '/mattress"'),
@@ -130,6 +120,10 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       // longer than the assertion timeout, and a check that ends on "/" isn't the known bug.
       await test.step('Wait for the page to leave /', () =>
         page.waitForURL((url) => url.pathname !== '/', { waitUntil: 'commit', timeout: 30_000 }));
+
+      // The bug's step: only now is a failure the known bug. A failed setup above stays an
+      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
+      test.fail();
 
       await test.step('URL is the listing /mattresses', async () => {
         await expect(page).toHaveURL('/mattresses');
