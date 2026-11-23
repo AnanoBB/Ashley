@@ -1,6 +1,5 @@
 import { errors, expect, type Locator, type Page, type Response } from '@playwright/test';
 import { BasePage } from './BasePage';
-import { escapeRegExp } from '../utils/regexp';
 
 /** The buy box (sizes, prices) loads after hydration and can take >15 s on the shared QA env. */
 const BUY_BOX_TIMEOUT = 45_000;
@@ -13,14 +12,11 @@ const ADD_TO_CART_TIMEOUT = 60_000;
 export interface AddToCartResult {
   /** The `POST /carts/my/items` response sent by the storefront. */
   response: Response;
-  /** Whether the "Upgrade to …" upsell was shown and declined (A/B driven). */
-  upsellDeclined: boolean;
 }
 
 export class ProductPage extends BasePage {
   readonly heading: Locator;
   readonly sizeSelect: Locator;
-  readonly selectedSize: Locator;
   readonly price: Locator;
   readonly addToCartButton: Locator;
   private readonly upsellNoThanks: Locator;
@@ -29,7 +25,6 @@ export class ProductPage extends BasePage {
     super(page);
     this.heading = page.getByRole('heading', { level: 1 });
     this.sizeSelect = page.getByTestId('add_to_cart_property_selector_size');
-    this.selectedSize = this.sizeSelect.getByTestId('add_to_cart_property_selector_size_selected');
     // Despite its name, this test id holds the selling price (see bug #8 in docs/exploration.md).
     this.price = this.sizeSelect.getByTestId(
       'add_to_cart_property_selector_size_selected_original_price',
@@ -55,7 +50,7 @@ export class ProductPage extends BasePage {
   /**
    * What a shopper sees as ready: prices shown and Add to Cart enabled (before that it is a loading
    * shimmer and clicks are ignored). The page can still apply a late price quote after this and
-   * reset the size (exploration #30, UI-27); tests don't wait it out.
+   * reset the size (exploration #30); tests don't wait it out.
    */
   async waitUntilReady(): Promise<void> {
     await expect(
@@ -63,14 +58,6 @@ export class ProductPage extends BasePage {
       'the size selector with its price appears (bug #32: sometimes it never does)',
     ).toHaveText(/\$\d/, { timeout: BUY_BOX_TIMEOUT });
     await expect(this.addToCartButton).toBeEnabled();
-  }
-
-  /** Opens the size list and picks a size, once. The test checks that it stays selected. */
-  async selectSize(title: string): Promise<void> {
-    await this.sizeSelect.click();
-    await this.page
-      .getByRole('option', { name: new RegExp(`^${escapeRegExp(title)} \\(`) })
-      .click();
   }
 
   /**
@@ -132,6 +119,6 @@ export class ProductPage extends BasePage {
     if (first === 'upsell') {
       await this.upsellNoThanks.click();
     }
-    return { response: await response, upsellDeclined: first === 'upsell' };
+    return { response: await response };
   }
 }

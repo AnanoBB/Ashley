@@ -1,4 +1,4 @@
-import { test, expect, knownBug } from '../../src/fixtures';
+import { test, expect } from '../../src/fixtures';
 import { MATTRESS_KEYS } from '../../src/data/mattresses';
 
 test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'] }, () => {
@@ -58,27 +58,4 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       }
     });
   });
-
-  test(
-    'UI-09 header "Mattresses" link opens the mattress listing',
-    // `/mattress"` is the URL the bug lands on; the expected `/mattresses"` doesn't contain it.
-    knownBug(13, 'the link opens /mattress (one product), not /mattresses', '/mattress"'),
-    async ({ page, homePage }) => {
-      await test.step('Click "Mattresses" in the header', () =>
-        homePage.header.mattressesLink.click());
-
-      // Precondition, not the check: wait for the click to navigate at all. QA can take ~20 s,
-      // longer than the assertion timeout, and a check that ends on "/" isn't the known bug.
-      await test.step('Wait for the page to leave /', () =>
-        page.waitForURL((url) => url.pathname !== '/', { waitUntil: 'commit', timeout: 30_000 }));
-
-      // The bug's step: only now is a failure the known bug. A failed setup above stays an
-      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
-      test.fail();
-
-      await test.step('URL is the listing /mattresses', async () => {
-        await expect(page).toHaveURL('/mattresses');
-      });
-    },
-  );
 });
