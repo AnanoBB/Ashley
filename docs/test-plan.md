@@ -1,7 +1,7 @@
 # Test plan: Awara QA home assignment
 
 > Written 2026-11-21, updated 2026-11-23 to match what is automated. Based on the assignment in
-> `CLAUDE.md`, the API notes in `docs/api-overview.md` and the UI exploration in
+> `CLAUDE.md`, the API notes in the README and the UI exploration in
 > `docs/exploration.md` (bug numbers like **#1** refer to that file).
 
 ## 1. Goal
@@ -17,9 +17,9 @@ first slice of a regression suite that can grow later.
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **API: products**           | `GET /products` by brand and by name: status, response schema (`{ status, result: { total_count, data } }`), result counts, key field values, and a few negative/edge filters.        |
 | **UI: home page**           | The page opens, the hero banner renders, and "Shop Mattress" navigates correctly.                                                                                                     |
-| **UI: mattress PDP**        | The right product opens, the default size and price show, and a different size can be selected.                                                                                       |
+| **UI: mattress PDP**        | The right product opens with its catalog price.                                                                                                                                       |
 | **UI: add to cart**         | The upsell popup is handled, the item is added (API call + header counter), and the cart shows the right name, size, price, quantity and total.                                       |
-| **UI: header (mattresses)** | The mattress mega menu (3 product cards, "Shop All Mattresses"), the top-level "Mattresses" link, the logo and the cart icon.                                                         |
+| **UI: header (mattresses)** | The mattress mega menu (3 product cards, "Shop All Mattresses") and the cart icon counter.                                                                                            |
 | **Cross-cutting**           | User-Agent `E2EUI-Tests` from the browser and `E2EUI-Tests-Brands-CI` on API calls, overlays (cookie banner, promo popup) handled centrally, Allure + HTML reports, CI on every push. |
 
 **Environment:** QA only: UI `https://qa.awarasleep.com`, API `https://api.qa-env.residenthome.com`.
@@ -54,8 +54,8 @@ first slice of a regression suite that can grow later.
 - **Test isolation:** a fresh browser context per test, because the cart is stored on the server and
   tied to the browser's auth token.
 - **Known bugs:** a test that hits a documented bug is declared with `test.fail()` and tagged
-  `@known-bug`, with a note pointing to the bug. CI stays green, and Allure shows it red under
-  "Known product bugs". Assertions are never weakened to pass.
+  `@known-bug`, with a note pointing to the bug. CI stays green while the bug exists, and the test
+  turns red once it is fixed. Assertions are never weakened to pass.
 - **Tags:** `@api`/`@ui`, `@smoke`/`@regression`, area tags (`@header`, `@cart`), `@negative` and
   `@known-bug`.
 
@@ -112,7 +112,7 @@ Considered but not automated:
 | UI-06 | UI    | Each mega menu card opens the matching product page (h1 = card name)                                                 | Positive | P2       | Data-driven ×3                                                                                                       |
 | UI-07 | UI    | The "from" price on each mega menu card ($499+/$599+/$749+) equals the cheapest size on its product page             | Positive | P2       | Data-driven ×3                                                                                                       |
 | UI-08 | UI    | "Shop All Mattresses" opens `/mattresses` and lists all 3 mattresses                                                 | Positive | P2       |                                                                                                                      |
-| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                                  | Negative | P2       | **Known bug #13**: it opens a single product. Marked `test.fail()`.                                                  |
+| UI-09 | UI    | Header "Mattresses" link opens the mattress listing                                                                  | Positive | P2       | **Known bug #13**: it opens a single product. Marked `test.fail()`.                                                  |
 | UI-10 | UI    | The logo returns to the home page from a product page                                                                | Positive | P3       |                                                                                                                      |
 | UI-11 | UI    | The product page `<title>` matches its h1 (all 3 mattresses)                                                         | Edge     | P3       | **Known bug #22** (Premier)                                                                                          |
 
@@ -136,24 +136,25 @@ Considered but not automated:
 | UI-25 | UI    | An unknown URL returns 404 and shows the not-found page, whose "Back to home" link works                                        | Negative | P2       |                                                                               |
 | UI-26 | UI    | When `POST /carts/my/items` fails (stubbed 500), the shopper stays on the product page and the cart stays empty                 | Negative | P2       | Finding #29: no error message is shown                                        |
 | UI-27 | UI    | A size picked before the price quote (`GET /carts/quote`) arrives stays selected (quote held back to reproduce the race)        | Edge     | P2       | Known bug #30: the page resets it to Queen                                    |
-| UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Bug #31; quarantined: reproduces only on slow page loads                      |
+| UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Bug #31: reproduces only on slow page loads                                   |
 
 **Total: 40 cases.** 10 are P1 (the assignment plus the core path), 21 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
-**Automated (35 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
-07 (×3), 08, 09, 12, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 16,
-21, 22 (its second step also covers UI-24, the empty cart page), 25, 26, 27, 28. Of these, UI-07 (×3),
-12, 16 and 28 are quarantined: written and skipped with the reason, because site bugs (#30, #31,
-#32 in docs/exploration.md) make them fail at random.
+**Automated (27 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
+08, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 21, 22 (its second step
+also covers UI-24, the empty cart page), 25 and 26. UI-02 is the only test expected to fail (bug #1).
 
 **Not automated:**
 
-| ID                  | Why                                                                                                                                     |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| UI-04               | Cut in the submission review; the popups are still closed by fixtures in every UI test                                                  |
-| UI-18, UI-19, UI-20 | Cut: unstable without retries because of cart page bugs (README findings 4–5, exploration #25–#26); tests aren't kept green by retrying |
-| UI-10, 11, 17, 23   | P3 backlog                                                                                                                              |
+| ID                         | Why                                                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI-04                      | Cut: the popups are still closed by fixtures in every UI test                                                                                 |
+| UI-07, UI-12, UI-16, UI-27 | Cut: bug #30 (a late price quote resets the size) and #32 (no sizes shown) make them fail at random; UI-13 covers the default size and price  |
+| UI-28                      | Cut: bug #31 (menu ignores early hovers) only reproduces on slow page loads                                                                   |
+| UI-09                      | Cut: bug #13 is a navigation question for the product team, documented as a finding                                                           |
+| UI-18, UI-19, UI-20        | Cut: unstable without retries because of cart page bugs (#25, #26 and the cart's protection-plan dialog); tests aren't kept green by retrying |
+| UI-10, 11, 17, 23          | P3 backlog                                                                                                                                    |
 
 ## 6. Risks and known issues
 
@@ -178,4 +179,4 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 
 - Automated tests in `tests/api` and `tests/ui`, runnable with `npm test` (README).
 - Allure and Playwright HTML reports, uploaded as CI artifacts.
-- `docs/exploration.md` (findings, locators, bugs), `docs/api-overview.md`, and this plan.
+- `docs/exploration.md` (findings, locators, bugs), the README (API notes, findings), and this plan.
