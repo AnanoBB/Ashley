@@ -12,6 +12,7 @@
     "test:api": "playwright test --project=api",
     "test:ui": "playwright test --project=ui",
     "test:smoke": "playwright test --grep @smoke",
+    "test:quarantined": "RUN_QUARANTINED=1 playwright test --grep @quarantine",
     "docker:build": "docker build -t awara-qa-tests .",
     "test:docker": "npm run docker:build && docker run --rm --init --ipc=host -e BASE_URL -e API_URL -e UI_USER_AGENT -e API_USER_AGENT -v \"$PWD:/app\" -v /app/node_modules awara-qa-tests",
     "check:playwright-image": "node scripts/check-playwright-image.mjs",
