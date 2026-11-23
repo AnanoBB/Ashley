@@ -36,7 +36,7 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
 });
 
 test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
-  test.fail(
+  test(
     'UI-02 hero "Shop Mattress" opens exactly /mattress',
     knownBug(
       1,
@@ -54,6 +54,10 @@ test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
       // longer than the assertion timeout, and a check that ends on "/" isn't the known bug.
       await test.step('Wait for the page to leave /', () =>
         page.waitForURL((url) => url.pathname !== '/', { waitUntil: 'commit', timeout: 30_000 }));
+
+      // The bug's step: only now is a failure the known bug. A failed setup above stays an
+      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
+      test.fail();
 
       await test.step('Path is exactly /mattress', async () => {
         await expect(page).toHaveURL('/mattress');

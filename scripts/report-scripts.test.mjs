@@ -156,3 +156,32 @@ test('ci-summary counts a known bug that needed a retry as flaky', () => {
   assert.match(stdout, /\| ui \| 0 \| 0 \| 0 \| 0 \| 1 \| 0 \|/);
   assert.match(stdout, /- \*\*flaky\*\* `ui` slow bug/);
 });
+
+test('ci-summary lists skipped quarantined tests with their reason', () => {
+  writeResults([
+    {
+      id: 'a',
+      name: 'UI-12 held back',
+      status: 'skipped',
+      labels: [{ name: 'tag', value: 'quarantine' }],
+      steps: [{ name: 'quarantine: bug #32 shows no sizes' }],
+    },
+    { id: 'b', name: 'plain skip', status: 'skipped' },
+  ]);
+
+  const { stdout } = run('ci-summary.mjs');
+
+  assert.match(stdout, /Quarantined \(skipped on purpose/);
+  assert.match(stdout, /- `ui` UI-12 held back: bug #32 shows no sizes/);
+  assert.doesNotMatch(stdout, /plain skip:/);
+});
+
+test('mark-known-bugs leaves a known-bug test that failed in its setup as an ordinary failure', () => {
+  // test.fail() wasn't reached: Playwright reports a plain failure (and retries it in CI).
+  writeResults([
+    { id: 'a', name: 'setup', status: 'failed', labels: BUG_LABELS, message: 'page.goto: Timeout' },
+  ]);
+
+  assert.equal(run('mark-known-bugs.mjs', '--strict').status, 0);
+  assert.deepEqual([read('a').status, knownBugLabel(read('a'))], ['failed', undefined]);
+});
