@@ -1,20 +1,10 @@
-import { errors, type Request } from '@playwright/test';
+import { errors } from '@playwright/test';
 import { test, expect, knownBug } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
 import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
 
 const DEFAULT_SIZE = 'Queen';
-
-/**
- * The size in a buy-box offers request: `GET …/applicable-offers/v2?productSelection=<JSON>`, which
- * the page sends for the one size it has selected (unlike `/carts/quote`, which batches many carts).
- */
-function selectedSizeInOffers(request: Request): string | undefined {
-  const selection = new URL(request.url()).searchParams.get('productSelection');
-  const items = selection ? (JSON.parse(selection) as { properties?: { Size?: string } }[]) : [];
-  return items[0]?.properties?.Size;
-}
 
 /** The reset came 1-3 s after the quote in every reproduction (2026-11-23). */
 const RESET_WINDOW = 15_000;
@@ -223,7 +213,7 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
   // The quote is held back to make the race reproducible: on the QA site it is sometimes this late.
   test.fail(
     'UI-27 a size picked before the price quote arrives stays selected',
-    knownBug(30, 'a late price quote resets the picked size to Queen', 'Received: "queen"'),
+    knownBug(30, 'a late price quote resets the picked size to Queen', 'Received: "Queen"'),
     async ({ page, productPage, mattressCatalog }) => {
       const mattress = mattressCatalog.classic;
       const king = sizeOf(mattress, 'King');
@@ -246,24 +236,18 @@ test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] },
       });
 
       await test.step('When the quote arrives, the page keeps King selected', async () => {
-        // "Keeps" needs a window: the first offers request for another size within it is the reset.
-        // Registered first, so only requests sent after the release count.
-        const sizeChange = page
-          .waitForRequest(
-            (request) => {
-              if (!request.url().includes('applicable-offers')) return false;
-              return selectedSizeInOffers(request) !== king.value;
-            },
-            { timeout: RESET_WINDOW },
-          )
-          .then(selectedSizeInOffers, (error: unknown) => {
-            // No other size requested within the window: the page kept King.
-            if (error instanceof errors.TimeoutError) return king.value;
-            throw error;
-          });
         releaseQuotes();
-        expect(await sizeChange, 'size the page selects after the quote arrives').toBe(king.value);
-        await expect(productPage.selectedSize).toHaveText(king.title);
+        // "Keeps" needs a window: watch the label until it changes or the window ends.
+        await productPage.selectedSize
+          .filter({ hasNotText: king.title })
+          .waitFor({ timeout: RESET_WINDOW })
+          .catch((error: unknown) => {
+            // The window ended with King still shown: no reset.
+            if (!(error instanceof errors.TimeoutError)) throw error;
+          });
+        await expect(productPage.selectedSize, 'size shown after the quote arrives').toHaveText(
+          king.title,
+        );
       });
     },
   );
