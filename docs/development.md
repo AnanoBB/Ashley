@@ -56,11 +56,16 @@ tag in the `Dockerfile` and in `.github/workflows/ci.yml`; the CI `lint` job run
 5. **API tests** go through `tests/api/support.ts`: `expectProducts(response)` for success,
    `expectApiError(response, 400)` for errors.
 6. **Known site bug:** declare the test with
-   `test.fail('UI-30 …', knownBug(<bug #>, '<what goes wrong>', '<text of the expected error>'), async (…) => { … })`. It gets the
+   `test('UI-30 …', knownBug(<bug #>, '<what goes wrong>', '<text of the expected error>'), async (…) => { … })`
+   and call `test.fail()` in the body right before the step that hits the bug. It gets the
    `@known-bug` tag and a link to the bug list, and shows red under "Known product bugs" in Allure.
-   If it fails with any other error, Allure shows it as broken (a test problem), not as the bug.
-7. No fixed sleeps: wait for a condition (`await expect(locator).toBeVisible()`).
-8. Run `npm run lint`, `npm run typecheck` and your test before committing, and add it to
+   A failure in the steps before `test.fail()` is an ordinary failure (retried in CI); one after it
+   without the expected error is shown as broken (a test problem), not as the bug.
+7. **Site bug that makes a test fail at random:** declare it with
+   `test('UI-31 …', quarantine('<bug #, what happens>'), async (…) => { … })`. It is skipped with that
+   reason (and listed in the CI summary) until `RUN_QUARANTINED=1` (`npm run test:quarantined`).
+8. No fixed sleeps: wait for a condition (`await expect(locator).toBeVisible()`).
+9. Run `npm run lint`, `npm run typecheck` and your test before committing, and add it to
    `docs/test-plan.md`.
 
 ## Troubleshooting

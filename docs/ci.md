@@ -16,8 +16,10 @@ The pipeline lives in `.github/workflows/ci.yml`.
 Runs code that is already on GitHub, on any branch.
 
 - **On GitHub:** **Actions** → **CI** → **Run workflow** → pick the branch, `project` (`all` / `api`
-  / `ui`) and an optional `grep` filter (`@smoke`, `@negative`, `UI-13`, …).
+  / `ui`), an optional `grep` filter (`@smoke`, `@negative`, `UI-13`, …) and `quarantined` to run
+  the `@quarantine` tests instead of skipping them.
 - **From a terminal** (GitHub CLI): `gh workflow run ci.yml --ref main -f project=ui -f grep=@smoke`
+- **Quarantined tests only:** `gh workflow run ci.yml --ref main -f project=ui -f grep=@quarantine -f quarantined=true`
 
 Uncommitted local changes can't run on GitHub; run them locally with `npm test`.
 
@@ -28,12 +30,12 @@ lint ──► test (api) ──┐
      └─► test (ui) ───┴─► report ──► publish-report
 ```
 
-| Job                   | What it does                                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `lint`                | ESLint (no warnings allowed), Prettier and TypeScript checks, the Docker image tag check and the report-script tests. Tests only start if this passes. |
-| `test (api)` / `(ui)` | One job per project, in parallel, both in the Playwright Docker image ([Running in Docker](development.md#running-in-docker)). Both always finish.     |
-| `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky / known bug counts to the run's **Summary** tab |
-| `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)                           |
+| Job                   | What it does                                                                                                                                                                                        |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lint`                | ESLint (no warnings allowed), Prettier and TypeScript checks, the Docker image tag check and the report-script tests. Tests only start if this passes.                                              |
+| `test (api)` / `(ui)` | One job per project, in parallel, both in the Playwright Docker image ([Running in Docker](development.md#running-in-docker)). Both always finish.                                                  |
+| `report`              | Merges both projects' results into one Allure report, adds the history, and writes pass / fail / flaky / known bug counts and the quarantined tests with their reasons to the run's **Summary** tab |
+| `publish-report`      | Puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/), even when tests fail (push to `main` and nightly only)                                                                        |
 
 ## Artifacts
 

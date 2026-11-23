@@ -63,7 +63,7 @@ it in the reports and run it alone. All cases, with priorities, are in
 | `@regression`      | Everything beyond the assignment          | 30    |
 | `@negative`        | Bad input and failure handling            | 7     |
 | `@known-bug`       | Checks a known site bug, expected to fail | 3     |
-| `@quarantine`      | Skipped, with the reason in the report    | 6     |
+| `@quarantine`      | Skipped with the reason (run on demand)   | 6     |
 | `@api`, `@ui`      | Layer                                     | 14/21 |
 | `@cart`, `@header` | UI feature area                           | 7/10  |
 
@@ -87,7 +87,7 @@ assertions. UI-13 checks "added to the cart" three ways: the add-to-cart API cal
 - **Expected prices** come from the storefront's own catalog API (`/api/catalog/products`), the
   source the page renders from. The UI tests therefore catch display and cart bugs, not wrong prices
   in the catalog itself.
-- **Expected to fail:** UI-02, UI-09 and UI-27 check real site bugs with `test.fail()`. They pass while the
+- **Expected to fail:** UI-02, UI-09 and UI-27 check real site bugs; each calls `test.fail()` right before the step that hits its bug. They pass while the
   bug exists (a ✘ in the terminal is normal) and turn red when it's fixed. In Allure they show red
   under **Known product bugs**, so they're never hidden among the passes, while CI stays green.
 
@@ -107,22 +107,26 @@ assertions. UI-13 checks "added to the cart" three ways: the add-to-cart API cal
 | `npm run typecheck`                       | TypeScript check                                    |
 | `npm run check:playwright-image`          | Docker image tag matches the installed Playwright   |
 | `npm run test:scripts`                    | Unit tests of the report scripts (`scripts/`)       |
+| `npm run test:quarantined`                | Only the quarantined tests, run instead of skipped  |
 
-Locally there are no retries, so a full run against the shared QA site can still show the odd failure
-that comes from the site, not the tests (a slow page, a click it ignores). CI retries once and lists
-those as flaky. Tests that site bugs made fail at random are quarantined (`@quarantine`, skipped with
-the reason in the report).
+Locally there are no retries, so a run against the shared QA site, even `test:smoke`, can still show
+the odd failure that comes from the site, not the tests. The message names the bug: the product page
+shows no sizes (#32), or the add succeeds but the cart page doesn't open (#25). CI retries once and
+lists those as flaky. Tests that site bugs made fail at random are quarantined (`@quarantine`): they
+are skipped with their reason, listed in the CI run summary, and run with `npm run test:quarantined`
+(macOS/Linux; elsewhere set `RUN_QUARANTINED=1`).
 
 ### Environment variables
 
 All optional. Put them in a `.env` file (copy `.env.example`) or in front of a command.
 
-| Variable         | Default                               | Used by                                     |
-| ---------------- | ------------------------------------- | ------------------------------------------- |
-| `BASE_URL`       | `https://qa.awarasleep.com`           | Website under test                          |
-| `API_URL`        | `https://api.qa-env.residenthome.com` | API under test                              |
-| `UI_USER_AGENT`  | `E2EUI-Tests`                         | The browser and the storefront catalog call |
-| `API_USER_AGENT` | `E2EUI-Tests-Brands-CI`               | The API tests                               |
+| Variable          | Default                               | Used by                                     |
+| ----------------- | ------------------------------------- | ------------------------------------------- |
+| `BASE_URL`        | `https://qa.awarasleep.com`           | Website under test                          |
+| `API_URL`         | `https://api.qa-env.residenthome.com` | API under test                              |
+| `UI_USER_AGENT`   | `E2EUI-Tests`                         | The browser and the storefront catalog call |
+| `API_USER_AGENT`  | `E2EUI-Tests-Brands-CI`               | The API tests                               |
+| `RUN_QUARANTINED` | empty                                 | `1` runs the `@quarantine` tests            |
 
 ## Reports
 
@@ -156,7 +160,7 @@ lint ──► test (api) ──┐
   `Dockerfile` uses). 2 workers; 1 retry (none locally), and a pass on retry is reported as **flaky**. A
   `@known-bug` test that fails for another reason than its bug fails the job.
 - **report:** merges both projects into one Allure report with history and writes a pass / fail /
-  flaky / known-bug table to the run's **Summary** tab.
+  flaky / known-bug table to the run's **Summary** tab, with the quarantined tests and their reasons.
 - **publish-report:** puts the report on [GitHub Pages](https://ananobb.github.io/Ashley/).
 
 **Artifacts** (run page → Artifacts, kept 14 days): `allure-report`, `allure-results-{api,ui}`,
@@ -190,7 +194,7 @@ docs/                      exploration, test plan, API overview, CI details, dev
 | Page objects + fixtures; specs import `test` / `expect` only from `src/fixtures` | Specs read like the test plan and hold the assertions; selectors live in one place (ESLint enforces it)                                                                                                                       |
 | Locators by role / label / test id, no XPath                                     | They read like the page and survive layout changes                                                                                                                                                                            |
 | Unexpected API behaviour: assert what it does, add a `finding` note              | The behaviour is documented and guarded; a deliberately red test would just be noise                                                                                                                                          |
-| Known site bugs: keep the strict assertion, mark `test.fail()` + `knownBug()`    | The bug stays visible (red in Allure) without failing CI; any other failure fails CI                                                                                                                                          |
+| Known site bugs: keep the strict assertion, `knownBug()` + `test.fail()`         | The bug stays visible (red in Allure) without failing CI; any other failure fails CI                                                                                                                                          |
 | Popups: block Dynamic Yield scripts, pre-set the cookie consent, handle the rest | They appear at random times and steal clicks; tests stay about behaviour                                                                                                                                                      |
 | No fixed sleeps; waits on conditions, with long timeouts only for slow loads     | The QA site's buy box and menu can take 20 s or more; waits end as soon as the condition is true                                                                                                                              |
 | One action per step, no click or hover retry loops                               | A click or hover the site ignores, or a choice it resets, is a bug: the test fails and names it. One exception: the menu-content tests hover again, because the menu ignores early hovers (bug #31, documented)               |
