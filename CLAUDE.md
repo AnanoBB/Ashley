@@ -22,9 +22,10 @@ Deviations (documented in the README):
   POST/PUT/DELETE give 405). Findings, asserted as actual behaviour with a `finding` annotation:
   brand is required even with name (API-05); lang has no effect (API-06); brand ignores case, name
   doesn't (API-07a/b). Lists are capped at 200 items (`total_count` can be higher).
-- [x] UI: 19 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
+- [x] UI: 21 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
   UI-13 (UI-14/15 are its steps); "on /mattress" means the path is `/mattress` or `/mattresses/…`
-  (`MATTRESS_URL`). UI-02 (exact path) is a `@known-bug`. UI-25 (404) and UI-26 (stubbed failed
+  (`MATTRESS_URL`). UI-02 (exact path), UI-09, UI-27 (size reset by a late price quote, #30) and UI-28 (menu ignores
+  hovers after load, #31) are `@known-bug`. UI-25 (404) and UI-26 (stubbed failed
   add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04 (the fixtures close the
   popups in every test), UI-18, UI-19, UI-20 (flaky, see README findings 4-5). UI-22 also covers
   UI-24. Planned but not automated: UI-10, 11, 17, 23.
@@ -52,6 +53,11 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - Tags: `@api`/`@ui`, `@smoke`/`@regression`, `@cart`/`@header`, `@negative`, `@known-bug`,
   `@quarantine` (env-blocked: tag + `test.fixme` with the reason; none now).
 - Await every promise. No `waitForTimeout`, no secrets, no commented-out code.
+- Act like a user: one action per step, no click/hover retry loops, no waiting on network calls the
+  user can't see. A click the site ignores or a choice it resets is a bug: the test fails and names
+  it. Make an intermittent bug reproducible (e.g. hold a response) and cover it with a `@known-bug`.
+  Only exception: `Header.openMattressesMenu` hovers again for the menu-content tests, because
+  UI-28 reports the ignored hovers (#31).
 - **Never weaken or change an assertion to make a test pass.** Report whether a failure is a test
   problem or a real bug.
 - Known site bug: keep the strict assertion, use
@@ -71,7 +77,7 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 
 ### UI
 - Page Object Model: `readonly` locator fields, methods are user actions. No assertions in page
-  objects except readiness checks and retry waits.
+  objects except readiness checks.
 - Locators: `getByRole` (with name) → `getByLabel` → `getByTestId` → `getByText`. No XPath or long
   CSS chains; scope locators when text isn't unique. Web-first assertions only.
 - The `page` fixture blocks Dynamic Yield scripts (the promo popup), pre-sets the cookie consent and
@@ -93,7 +99,8 @@ User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `hi
 - Jobs: `lint` → `test` (matrix `api`/`ui` in the Playwright container) → `report` (merged Allure +
   run summary) → `publish-report` (GitHub Pages, only push to `main` and nightly):
   https://ananobb.github.io/Ashley/
-- `retries: 1`, in CI and locally (pass-on-retry counted as flaky). 2 workers (3 time out on QA).
+- `retries: 1` in CI (pass-on-retry counted as flaky), 0 locally so flakiness shows. 2 workers (3
+  time out on QA).
 - After pushing, watch the run (`gh run watch`) and report the result. On a PR from this repo, check
   the `push` run; the `pull_request` run skips jobs on purpose (forks only).
 
