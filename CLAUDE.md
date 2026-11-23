@@ -22,13 +22,12 @@ Deviations (documented in the README):
   POST/PUT/DELETE give 405). Findings, asserted as actual behaviour with a `finding` annotation:
   brand is required even with name (API-05); lang has no effect (API-06); brand ignores case, name
   doesn't (API-07a/b). Lists are capped at 200 items (`total_count` can be higher).
-- [x] UI: 21 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
+- [x] UI: 13 tests in `tests/ui/`, explored first (`docs/exploration.md`). `@smoke` = UI-01, UI-03,
   UI-13 (UI-14/15 are its steps); "on /mattress" means the path is `/mattress` or `/mattresses/…`
-  (`MATTRESS_URL`). UI-02 (exact path), UI-09 and UI-27 (size reset by a late price quote, #30)
-  are `@known-bug`; UI-07 ×3, UI-12, UI-16 and UI-28 are `@quarantine` (site bugs #30, #32,
-  #31). UI-25 (404) and UI-26 (stubbed failed add-to-cart, finding #29) are `@negative`. Cut for the submission: UI-04 (the fixtures close the
-  popups in every test), UI-18, UI-19, UI-20 (flaky, see README findings 4-5). UI-22 also covers
-  UI-24. Planned but not automated: UI-10, 11, 17, 23.
+  (`MATTRESS_URL`). UI-02 (exact path, bug #1) is the only `@known-bug` test. UI-25 (404) and UI-26
+  (stubbed failed add-to-cart, finding #29) are `@negative`. UI-22 also covers UI-24. Cut on
+  2026-11-23 to keep the suite simple: UI-04, UI-07, UI-09, UI-12, UI-16, UI-18..20, UI-27, UI-28
+  (site bugs #13, #25, #26, #30-#32; see the test plan). Planned but not automated: UI-10, 11, 17, 23.
   **Ask before adding or removing UI cases.**
 - [x] Allure, [x] CI/CD + artifacts + Pages, [x] README
 - [x] Final review against the assignment (2026-11-23)
@@ -43,32 +42,24 @@ ESLint (type-aware, `--max-warnings 0`) + Prettier. CI test jobs and the local `
 Playwright MCP (`.mcp.json`) is for exploring the app only, never in CI.
 
 Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, utils, config),
-`tests/api`, `tests/ui`, `scripts/` (CI summary, known-bug marking, image tag check, and
-`report-scripts.test.mjs`), `docs/` (exploration, test plan, API overview). Config:
+`tests/api`, `tests/ui`, `scripts/` (Playwright image tag check), `docs/` (exploration, test plan). Config:
 `playwright.config.ts`, `allurerc.mjs`, `.env.example` (keep in sync; `.env` is not committed).
 
 ## Conventions
 - Specs import `test`/`expect` from `src/fixtures`, never from `@playwright/test`.
 - `test.step()` for each assignment step. Tests are independent and parallel-safe.
-- Tags: `@api`/`@ui`, `@smoke`/`@regression`, `@cart`/`@header`, `@negative`, `@known-bug`,
-  `@quarantine` (blocked or made unreliable by the environment or a site bug:
-  `test(title, quarantine('<reason>'), body)` from `src/fixtures/quarantine.ts`; the `quarantineGate`
-  fixture skips it unless `RUN_QUARANTINED=1`, and the CI summary lists it with the reason; now
-  UI-07 ×3 and UI-16 (#30), UI-12 (#32), UI-28 (#31)).
+- Tags: `@api`/`@ui`, `@smoke`/`@regression`, `@cart`/`@header`, `@negative`, `@known-bug`.
 - Await every promise. No `waitForTimeout`, no secrets, no commented-out code.
 - Act like a user: one action per step, no click/hover retry loops, no waiting on network calls the
   user can't see. A click the site ignores or a choice it resets is a bug: the test fails and names
-  it. Make an intermittent bug reproducible (e.g. hold a response) and cover it with a `@known-bug`.
+  it. A test that a site bug makes fail at random is left out and the bug documented, not retried.
   Only exception: `Header.openMattressesMenu` hovers again for the menu-content tests, because
-  the menu ignores early hovers (#31, documented; UI-28 is quarantined).
+  the menu ignores early hovers (#31, documented).
 - **Never weaken or change an assertion to make a test pass.** Report whether a failure is a test
   problem or a real bug.
-- Known site bug: keep the strict assertion, use
-  `test(title, knownBug(<#>, '<desc>', '<text of the expected error>'), body)`
-  (`src/fixtures/knownBug.ts`) and call `test.fail()` in the body right before the step that hits
-  the bug, so a failed setup stays an ordinary (retried) failure. The expected error must be specific to the bug (e.g. the wrong URL
-  it lands on), not just the matcher name. Any other failure is reported as broken by
-  `mark-known-bugs.mjs`, and `--strict` (CI test job) fails the job.
+- Known site bug: keep the strict assertion, tag `@known-bug` with a `known bug` annotation naming
+  the bug, and call `test.fail()` in the body right before the step that hits it, so a failed setup
+  stays an ordinary failure (UI-02).
 - Keep assignment tests in their own `describe`, apart from extras.
 
 ### API
@@ -92,25 +83,22 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - `docs/exploration.md` is the source of truth for locators and flakiness risks.
 
 ## Reporting
-`npm run allure:generate` runs `scripts/mark-known-bugs.mjs` first: expected `@known-bug` failures
-become `failed` with a `knownBug` label, which the `allurerc.mjs` categories and `ci-summary.mjs`
-match on; a failure without the expected error becomes `broken`. Allure environment info (URLs,
-User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `history.jsonl` (git-ignored; kept with the published report in CI).
+Allure (`npm run allure:generate` / `allure:open`) and the Playwright HTML report. Allure environment
+info (URLs, User-Agents, browser, Node) comes from `playwright.config.ts`. History is in
+`history.jsonl` (git-ignored; kept with the published report in CI).
 
 ## CI/CD (`.github/workflows/ci.yml`)
-- Runs on push (any branch), fork PRs, nightly (03:00 UTC, `main`) and manual `workflow_dispatch`
-  (`project`, `grep`, `quarantined`): `gh workflow run ci.yml --ref <branch> -f project=ui -f grep=@smoke`.
-- Jobs: `lint` → `test` (matrix `api`/`ui` in the Playwright container) → `report` (merged Allure +
-  run summary) → `publish-report` (GitHub Pages, only push to `main` and nightly):
-  https://ananobb.github.io/Ashley/
+- Runs on push (any branch), nightly (03:00 UTC, `main`) and manual `workflow_dispatch` (no inputs):
+  `gh workflow run ci.yml --ref <branch>`. No `pull_request` trigger: push checks show on PRs.
+- Jobs: `lint` → `test` (matrix `api`/`ui` in the Playwright container) → `report` (merged Allure)
+  → `publish-report` (GitHub Pages, every `main` run): https://ananobb.github.io/Ashley/
 - `retries: 1` in CI (pass-on-retry counted as flaky), 0 locally so flakiness shows. 2 workers (3
   time out on QA).
-- After pushing, watch the run (`gh run watch`) and report the result. On a PR from this repo, check
-  the `push` run; the `pull_request` run skips jobs on purpose (forks only).
+- After pushing, watch the run (`gh run watch`) and report the result.
 
 ## Commands
-`npm test` / `test:smoke` / `test:api` / `test:ui` / `test:quarantined` / `test:docker`, `npm run lint` / `typecheck`,
-`npm run allure:generate` / `allure:open`, `npm run test:scripts` (report-script unit tests).
+`npm test` / `test:smoke` / `test:api` / `test:ui` / `test:docker`, `npm run lint` / `typecheck`,
+`npm run allure:generate` / `allure:open`.
 After any code change, run lint (no warnings allowed), typecheck and the relevant tests before
 saying you're done.
 
@@ -122,9 +110,8 @@ saying you're done.
 
 ## README
 Must cover: CI badge + Allure link, overview, stack, prerequisites, install, run commands, reports,
-CI/CD + artifacts, structure + design decisions, findings, AI usage. Keep it short; details go to
-`docs/ci.md` and `docs/development.md`. Every command must work in a
-clean clone. The "AI usage" section is in the author's voice: the user owns its wording.
+CI/CD + artifacts, structure + design decisions, findings, AI usage. Keep it short. Every command
+must work in a clean clone. The "AI usage" section is in the author's voice: the user owns its wording.
 
 ## Planned
 Scripts `format`, `allure:serve`.
