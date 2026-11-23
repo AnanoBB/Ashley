@@ -7,7 +7,7 @@ The pipeline lives in `.github/workflows/ci.yml`.
 | Trigger                       | What runs                                    | Publishes the report |
 | ----------------------------- | -------------------------------------------- | -------------------- |
 | Push to any branch (not tags) | All tests                                    | Only on `main`       |
-| **Nightly**, 03:00 UTC        | **Full regression**: all 33 tests, on `main` | Yes                  |
+| **Nightly**, 03:00 UTC        | **Full regression**: all 35 tests, on `main` | Yes                  |
 | **Manual** ("Run workflow")   | All tests, or the project/filter you choose  | No                   |
 | Pull request from a fork      | All tests                                    | No                   |
 
@@ -48,8 +48,8 @@ Download from the run page → **Artifacts** (kept 14 days), or `gh run download
 
 ## Other rules
 
-- **Retries:** 1, in CI and locally. A test that passes only on the retry is counted as **flaky** in
-  the summary, so it stays visible.
+- **Retries:** 1 in CI, 0 locally. A test that passes only on the retry is counted as **flaky** in
+  the summary, so it stays visible; locally, a flaky test fails in front of its author.
 - **Known bugs:** a `@known-bug` test that fails for another reason than its bug (its message lacks
   the `expectedError` from `knownBug()`) fails the test job (`mark-known-bugs.mjs --strict`).
 - **Cancelling:** a newer push to the same branch cancels the older run. On `main`, pushes and the

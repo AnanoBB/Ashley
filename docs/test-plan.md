@@ -135,13 +135,15 @@ Considered but not automated:
 | UI-24 | UI    | Going straight to `/checkout/cart` with an empty cart shows an empty-cart state, not an error                                   | Negative | P3       |                                                                               |
 | UI-25 | UI    | An unknown URL returns 404 and shows the not-found page, whose "Back to home" link works                                        | Negative | P2       |                                                                               |
 | UI-26 | UI    | When `POST /carts/my/items` fails (stubbed 500), the shopper stays on the product page and the cart stays empty                 | Negative | P2       | Finding #29: no error message is shown                                        |
+| UI-27 | UI    | A size picked before the price quote (`GET /carts/quote`) arrives stays selected (quote held back to reproduce the race)        | Edge     | P2       | Known bug #30: the page resets it to Queen                                    |
+| UI-28 | UI    | The mattresses menu opens on the first hover once the home page is shown                                                        | Edge     | P2       | Known bug #31: hovers are ignored for 3–9 s                                   |
 
-**Total: 38 cases.** 10 are P1 (the assignment plus the core path), 19 are P2 and 9 are P3. For this
+**Total: 40 cases.** 10 are P1 (the assignment plus the core path), 21 are P2 and 9 are P3. For this
 assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cases are a backlog.
 
-**Automated (33 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
+**Automated (35 tests):** all API cases (API-01 … 11, 14 tests) and UI-01, 02, 03, 05, 06 (×3),
 07 (×3), 08, 09, 12, 13 (UI-14 and UI-15 are its steps: one user journey, one add to cart), 16,
-21, 22 (its second step also covers UI-24, the empty cart page), 25, 26.
+21, 22 (its second step also covers UI-24, the empty cart page), 25, 26, 27, 28.
 
 **Not automated:**
 
@@ -161,7 +163,7 @@ assignment, the plan is to automate all P1 cases, then P2 as time allows. P3 cas
 | Delayed overlays (cookie banner, promo popup, upsell popups)                                       | Flaky clicks                            | Central `addLocatorHandler()` handlers and a pre-set consent cookie.                                                            |
 | A/B tests and promo changes (Dynamic Yield, countdowns)                                            | Copy and popups vary                    | Never assert marketing text or timers. Make the upsell handling optional.                                                       |
 | Duplicate hidden DOM (responsive copies, a hidden inert nav)                                       | Strict-mode locator errors              | Scoped locators from `docs/exploration.md`. Ask devs for missing test IDs.                                                      |
-| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers and 1 retry, in CI and locally (a pass on retry is counted as flaky in the run summary).                              |
+| Bot protection (DataDome) during parallel CI runs                                                  | Random blocks                           | 2 workers; 1 retry in CI and none locally (a pass on retry is counted as flaky in the run summary).                             |
 | Shared QA environment, with the cart stored on the server                                          | Data leaks between tests                | A fresh context per test (UI-22 checks it). No checkout, so no orders are created.                                              |
 
 ## 7. Entry and exit criteria
