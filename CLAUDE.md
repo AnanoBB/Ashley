@@ -51,8 +51,10 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - Specs import `test`/`expect` from `src/fixtures`, never from `@playwright/test`.
 - `test.step()` for each assignment step. Tests are independent and parallel-safe.
 - Tags: `@api`/`@ui`, `@smoke`/`@regression`, `@cart`/`@header`, `@negative`, `@known-bug`,
-  `@quarantine` (blocked or made unreliable by the environment or a site bug: tag + `test.fixme`
-  with the reason; now UI-07 ×3 and UI-16 (#30), UI-12 (#32), UI-28 (#31)).
+  `@quarantine` (blocked or made unreliable by the environment or a site bug:
+  `test(title, quarantine('<reason>'), body)` from `src/fixtures/quarantine.ts`; the `quarantineGate`
+  fixture skips it unless `RUN_QUARANTINED=1`, and the CI summary lists it with the reason; now
+  UI-07 ×3 and UI-16 (#30), UI-12 (#32), UI-28 (#31)).
 - Await every promise. No `waitForTimeout`, no secrets, no commented-out code.
 - Act like a user: one action per step, no click/hover retry loops, no waiting on network calls the
   user can't see. A click the site ignores or a choice it resets is a bug: the test fails and names
@@ -62,8 +64,9 @@ Layout: `src/` (api clients + zod schemas, pages, components, fixtures, data, ut
 - **Never weaken or change an assertion to make a test pass.** Report whether a failure is a test
   problem or a real bug.
 - Known site bug: keep the strict assertion, use
-  `test.fail(title, knownBug(<#>, '<desc>', '<text of the expected error>'), body)`
-  (`src/fixtures/knownBug.ts`). The expected error must be specific to the bug (e.g. the wrong URL
+  `test(title, knownBug(<#>, '<desc>', '<text of the expected error>'), body)`
+  (`src/fixtures/knownBug.ts`) and call `test.fail()` in the body right before the step that hits
+  the bug, so a failed setup stays an ordinary (retried) failure. The expected error must be specific to the bug (e.g. the wrong URL
   it lands on), not just the matcher name. Any other failure is reported as broken by
   `mark-known-bugs.mjs`, and `--strict` (CI test job) fails the job.
 - Keep assignment tests in their own `describe`, apart from extras.
@@ -96,7 +99,7 @@ User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `hi
 
 ## CI/CD (`.github/workflows/ci.yml`)
 - Runs on push (any branch), fork PRs, nightly (03:00 UTC, `main`) and manual `workflow_dispatch`
-  (`project`, `grep`): `gh workflow run ci.yml --ref <branch> -f project=ui -f grep=@smoke`.
+  (`project`, `grep`, `quarantined`): `gh workflow run ci.yml --ref <branch> -f project=ui -f grep=@smoke`.
 - Jobs: `lint` → `test` (matrix `api`/`ui` in the Playwright container) → `report` (merged Allure +
   run summary) → `publish-report` (GitHub Pages, only push to `main` and nightly):
   https://ananobb.github.io/Ashley/
@@ -106,7 +109,7 @@ User-Agents, browser, Node) comes from `playwright.config.ts`. History is in `hi
   the `push` run; the `pull_request` run skips jobs on purpose (forks only).
 
 ## Commands
-`npm test` / `test:smoke` / `test:api` / `test:ui` / `test:docker`, `npm run lint` / `typecheck`,
+`npm test` / `test:smoke` / `test:api` / `test:ui` / `test:quarantined` / `test:docker`, `npm run lint` / `typecheck`,
 `npm run allure:generate` / `allure:open`, `npm run test:scripts` (report-script unit tests).
 After any code change, run lint (no warnings allowed), typecheck and the relevant tests before
 saying you're done.
