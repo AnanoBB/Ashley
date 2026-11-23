@@ -4,7 +4,8 @@ import { escapeRegExp } from '../utils/regexp';
 
 /** The buy box (sizes, prices) loads after hydration and can take >15 s on the shared QA env. */
 const BUY_BOX_TIMEOUT = 45_000;
-const ADD_TO_CART_TIMEOUT = 60_000;
+/** Click to cart page took 5-15 s in QA runs (2026-11-23); twice the longest seen. */
+const ADD_TO_CART_TIMEOUT = 30_000;
 
 export interface AddToCartResult {
   /** The `POST /carts/my/items` response sent by the storefront. */
@@ -48,89 +49,73 @@ export class ProductPage extends BasePage {
     await this.waitUntilReady();
   }
 
-  /** Until prices are loaded, Add to Cart is a loading shimmer and clicks are ignored. */
+  /**
+   * What a shopper sees as ready: prices shown and Add to Cart enabled (before that it is a loading
+   * shimmer and clicks are ignored). The page can still apply a late price quote after this and
+   * reset the size (exploration #30, UI-27); tests don't wait it out.
+   */
   async waitUntilReady(): Promise<void> {
     await expect(this.price).toHaveText(/\$\d/, { timeout: BUY_BOX_TIMEOUT });
     await expect(this.addToCartButton).toBeEnabled();
   }
 
-  /**
-   * A selection made while the buy box re-renders (price quotes refresh after load) is sometimes
-   * dropped, so retry until the selector shows the requested size.
-   */
+  /** Opens the size list and picks a size, once. The test checks that it stays selected. */
   async selectSize(title: string): Promise<void> {
-    const option = this.page.getByRole('option', {
-      name: new RegExp(`^${escapeRegExp(title)} \\(`),
-    });
-    await expect(async () => {
-      if (!(await option.isVisible())) {
-        await this.sizeSelect.click();
-      }
-      await option.click({ timeout: 5_000 });
-      await expect(this.selectedSize).toHaveText(title, { timeout: 2_000 });
-    }).toPass({ timeout: 30_000 });
+    await this.sizeSelect.click();
+    await this.page
+      .getByRole('option', { name: new RegExp(`^${escapeRegExp(title)} \\(`) })
+      .click();
   }
 
   /**
-   * Clicks Add to Cart, declines the upgrade upsell ("Upgrade to Certified Organic/Premier") when
-   * it is shown (A/B driven, not on every visit) and waits for the app to route to the cart.
+   * Clicks Add to Cart, declines the upgrade upsell ("Upgrade to Certified Organic/Premier") when it
+   * is shown (A/B driven, not on every visit) and waits for the app to route to the cart.
    * Resolves with the add-to-cart API response.
    */
-  addToCart(): Promise<AddToCartResult> {
-    return this.submitAddToCart(() => this.isOnCartPage(), 'routed to /checkout/cart');
+  async addToCart(): Promise<AddToCartResult> {
+    const result = await this.submitAddToCart();
+    // 'commit': the URL change is the routing; the `load` event can take over a minute (BasePage).
+    await this.page.waitForURL('**/checkout/cart', {
+      waitUntil: 'commit',
+      timeout: ADD_TO_CART_TIMEOUT,
+    });
+    return result;
   }
 
-  /**
-   * Like addToCart, but done as soon as the add-to-cart request has a response, without expecting
-   * the app to route to the cart (for tests where the request fails).
-   */
+  /** Like addToCart, but done when the add-to-cart request is answered (for failing requests). */
   tryAddToCart(): Promise<AddToCartResult> {
-    let responded = false;
-    return this.submitAddToCart(
-      () => responded,
-      'add-to-cart request answered',
-      () => {
-        responded = true;
-      },
-    );
+    return this.submitAddToCart();
   }
 
   /**
-   * When the upsell is shown, the request is sent only once it is declined. Declining is
-   * retried as a real click so overlay handlers (cookie banner) that stack on top of it run first.
+   * With the upsell, the request is sent only once the upsell is answered, so after the click wait
+   * for whichever comes first: the request or the upsell. Each is acted on once.
    */
-  private async submitAddToCart(
-    isDone: () => boolean,
-    doneMessage: string,
-    onResponse?: () => void,
-  ): Promise<AddToCartResult> {
-    const addRequest = this.page
-      .waitForResponse(
-        (response) =>
-          response.url().includes('/carts/my/items') && response.request().method() === 'POST',
-        { timeout: ADD_TO_CART_TIMEOUT },
-      )
-      .then((response) => {
-        onResponse?.();
-        return response;
-      });
-    let upsellDeclined = false;
-    const clickFlow = async (): Promise<void> => {
-      await this.addToCartButton.click();
-      await expect(async () => {
-        if (!isDone()) {
-          await this.upsellNoThanks.click({ timeout: 2_000 });
-          upsellDeclined = true;
-        }
-        expect(isDone(), doneMessage).toBe(true);
-      }).toPass({ timeout: ADD_TO_CART_TIMEOUT });
-    };
-    // Awaited together so a failed click flow doesn't leave the response wait rejecting unhandled.
-    const [response] = await Promise.all([addRequest, clickFlow()]);
-    return { response, upsellDeclined };
-  }
+  private async submitAddToCart(): Promise<AddToCartResult> {
+    const isAddToCart = (url: string, method: string): boolean =>
+      url.includes('/carts/my/items') && method === 'POST';
+    const response = this.page.waitForResponse(
+      (candidate) => isAddToCart(candidate.url(), candidate.request().method()),
+      { timeout: ADD_TO_CART_TIMEOUT },
+    );
+    const requestSent = this.page.waitForRequest(
+      (request) => isAddToCart(request.url(), request.method()),
+      { timeout: ADD_TO_CART_TIMEOUT },
+    );
+    const upsellShown = this.upsellNoThanks.waitFor({ timeout: ADD_TO_CART_TIMEOUT });
+    // The losing wait keeps running until the page closes; its rejection is expected.
+    void requestSent.catch(() => undefined);
+    void upsellShown.catch(() => undefined);
+    void response.catch(() => undefined);
 
-  private isOnCartPage(): boolean {
-    return new URL(this.page.url()).pathname === '/checkout/cart';
+    await this.addToCartButton.click();
+    const first = await Promise.race([
+      requestSent.then(() => 'request' as const),
+      upsellShown.then(() => 'upsell' as const),
+    ]);
+    if (first === 'upsell') {
+      await this.upsellNoThanks.click();
+    }
+    return { response: await response, upsellDeclined: first === 'upsell' };
   }
 }
