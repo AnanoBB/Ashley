@@ -71,14 +71,6 @@ export function sizeOf(mattress: Mattress, title: string): MattressSize {
   return size;
 }
 
-export function cheapestSize(mattress: Mattress): MattressSize {
-  const [first, ...rest] = mattress.sizes;
-  if (!first) {
-    throw new Error(`${mattress.title} has no sizes`);
-  }
-  return rest.reduce((min, size) => (size.priceCents < min.priceCents ? size : min), first);
-}
-
 export function findByTitle(catalog: MattressCatalog, title: string): Mattress {
   const mattress = Object.values(catalog).find((candidate) => candidate.title === title);
   if (!mattress) {

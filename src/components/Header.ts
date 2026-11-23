@@ -30,11 +30,6 @@ export class Header {
     this.mattressesToggle = this.menu.getByRole('button', { name: /^Expand Mattresses/ });
   }
 
-  /** Hovers "Mattresses" once. UI-28 (quarantined) checks that this alone opens the menu (#31). */
-  async hoverMattresses(): Promise<void> {
-    await this.mattressesLink.hover();
-  }
-
   /**
    * Opens the mega menu for tests about its content. For several seconds after the page appears
    * the menu ignores hovers (bug #31, docs/exploration.md), so like a shopper this moves the mouse
@@ -43,7 +38,7 @@ export class Header {
   async openMattressesMenu(): Promise<void> {
     await expect(async () => {
       await this.page.mouse.move(0, 0);
-      await this.hoverMattresses();
+      await this.mattressesLink.hover();
       await expect(this.mattressesToggle).toHaveAttribute('aria-expanded', 'true', {
         timeout: 2_000,
       });
