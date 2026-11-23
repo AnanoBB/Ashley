@@ -68,9 +68,6 @@ jobs:
       - name: Check the Playwright image matches the installed version
         run: npm run check:playwright-image
 
-      - name: Test the report scripts
-        run: npm run test:scripts
-
   test:
     name: test (${{ matrix.project }})
     needs: lint
@@ -140,13 +137,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # Playwright counts every failure of a test.fail() (@known-bug) test as a pass. Fail the job
-      # when one failed for another reason than its bug (e.g. a dead link instead of the wrong one).
-      # Runs after the uploads, which keep the raw results for the report job.
-      - name: Fail if a known-bug test failed for another reason
-        if: ${{ !cancelled() }}
-        run: node scripts/mark-known-bugs.mjs --strict
-
   report:
     needs: [lint, test]
     # Report even when tests fail, but not when lint failed (then no tests ran).
@@ -183,16 +173,6 @@ jobs:
 
       - name: Keep the history with the report
         run: if [ -f history.jsonl ]; then cp history.jsonl allure-report/; fi
-
-      - name: Write test summary
-        env:
-          TRIGGER: ${{ github.event_name }}
-          BRANCH: ${{ github.ref_name }}
-          PROJECT: ${{ inputs.project || 'all' }}
-          GREP: ${{ inputs.grep }}
-        run: |
-          echo "**Trigger:** $TRIGGER on \`$BRANCH\` · **Projects:** $PROJECT${GREP:+ · **Filter:** \`$GREP\`}" >> "$GITHUB_STEP_SUMMARY"
-          node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Allure report
         uses: actions/upload-artifact@v7

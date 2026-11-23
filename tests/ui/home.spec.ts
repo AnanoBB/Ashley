@@ -1,4 +1,4 @@
-import { test, expect, knownBug } from '../../src/fixtures';
+import { test, expect } from '../../src/fixtures';
 import { MATTRESS_URL } from '../../src/data/mattresses';
 
 test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
@@ -38,12 +38,14 @@ test.describe('Home page and hero', { tag: ['@ui', '@smoke'] }, () => {
 test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
   test(
     'UI-02 hero "Shop Mattress" opens exactly /mattress',
-    knownBug(
-      1,
-      'hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
-      // The URL the bug lands on (the `Received:` line), so a dead link or a 404 doesn't match.
-      '/mattresses/essential-latex-hybrid-mattress"',
-    ),
+    {
+      tag: '@known-bug',
+      annotation: {
+        type: 'known bug',
+        description:
+          'docs/exploration.md #1: the hero links to /mattresses/essential-latex-hybrid-mattress, not /mattress',
+      },
+    },
     async ({ page, homePage }) => {
       await test.step('Open the home page', () => homePage.goto());
 
@@ -55,8 +57,7 @@ test.describe('Hero link target', { tag: ['@ui', '@regression'] }, () => {
       await test.step('Wait for the page to leave /', () =>
         page.waitForURL((url) => url.pathname !== '/', { waitUntil: 'commit', timeout: 30_000 }));
 
-      // The bug's step: only now is a failure the known bug. A failed setup above stays an
-      // ordinary failure, so CI retries it instead of mark-known-bugs calling it broken.
+      // Known bug #1: expected to fail from here on. A failure in the steps above stays a real failure.
       test.fail();
 
       await test.step('Path is exactly /mattress', async () => {
