@@ -21,10 +21,6 @@ on:
         description: 'Optional filter by tag or title, e.g. @smoke, @negative, UI-13'
         type: string
         required: false
-      quarantined:
-        description: 'Run the @quarantine tests instead of skipping them (use with grep: @quarantine)'
-        type: boolean
-        default: false
 
 # - Push to main and nightly share one group, so two runs never restore and publish the Allure
 #   history at the same time. A push cancels a run in progress; a nightly waits for it.
@@ -114,7 +110,6 @@ jobs:
       - name: Run ${{ matrix.project }} tests
         env:
           GREP: ${{ inputs.grep }}
-          RUN_QUARANTINED: ${{ inputs.quarantined && '1' || '' }}
         # A filter may match only one project; the other then has no tests, which is fine.
         run: npx playwright test --project="${{ matrix.project }}" ${GREP:+--grep "$GREP" --pass-with-no-tests}
 

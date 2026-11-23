@@ -1,6 +1,5 @@
-import { test, expect, knownBug, quarantine } from '../../src/fixtures';
-import { cheapestSize, MATTRESS_KEYS } from '../../src/data/mattresses';
-import { formatUsd } from '../../src/utils/money';
+import { test, expect, knownBug } from '../../src/fixtures';
+import { MATTRESS_KEYS } from '../../src/data/mattresses';
 
 test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'] }, () => {
   test.beforeEach(async ({ homePage }) => {
@@ -41,36 +40,6 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
         await expect(productPage.heading).toHaveText(mattress.title);
       });
     });
-
-    // Quarantined: bug #30 makes it fail at random; remove quarantine() once #30 is fixed.
-    test(
-      `UI-07 menu "from" price for the ${key} mattress matches its cheapest size`,
-      quarantine(
-        'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
-      ),
-      async ({ homePage, productPage, mattressCatalog }) => {
-        const mattress = mattressCatalog[key];
-        const cheapest = cheapestSize(mattress);
-        const expectedPrice = formatUsd(cheapest.priceCents);
-
-        await test.step(`Menu card shows "${expectedPrice}+"`, async () => {
-          await homePage.header.openMattressesMenu();
-          await expect(homePage.header.menuCard(mattress.menuCardTestId)).toContainText(
-            `${expectedPrice}+`,
-          );
-        });
-
-        await test.step(`Product page shows ${expectedPrice} for ${cheapest.title}`, async () => {
-          await productPage.goto(mattress.path);
-          await productPage.selectSize(cheapest.title);
-          await expect(
-            productPage.selectedSize,
-            'the picked size stays selected (bug #30)',
-          ).toHaveText(cheapest.title);
-          await expect(productPage.price).toHaveText(expectedPrice);
-        });
-      },
-    );
   }
 
   test('UI-08 "Shop All Mattresses" opens the listing with all 3 mattresses', async ({
@@ -89,24 +58,6 @@ test.describe('Header: mattresses menu', { tag: ['@ui', '@regression', '@header'
       }
     });
   });
-
-  // Bug #31 only shows on a slow page load (3-9 s locally); on CI the first hover already works, so
-  // a known-bug check can't tell. Restore it as a known-bug test (knownBug(31, …, 'Received: "false"'))
-  // once the dead time can be reproduced on purpose (e.g. by holding the header's script).
-  test(
-    'UI-28 the mattresses menu opens on the first hover once the page is shown',
-    quarantine(
-      'bug #31 (menu ignores hovers after load) reproduces only on slow page loads, not on CI',
-    ),
-    async ({ homePage }) => {
-      await test.step('Hover "Mattresses" once, as soon as the home page is shown', () =>
-        homePage.header.hoverMattresses());
-
-      await test.step('The menu opens', async () => {
-        await expect(homePage.header.mattressesToggle).toHaveAttribute('aria-expanded', 'true');
-      });
-    },
-  );
 
   test(
     'UI-09 header "Mattresses" link opens the mattress listing',

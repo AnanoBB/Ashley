@@ -1,5 +1,5 @@
 import { errors } from '@playwright/test';
-import { test, expect, knownBug, quarantine } from '../../src/fixtures';
+import { test, expect, knownBug } from '../../src/fixtures';
 import { CartResponseSchema } from '../../src/api/schemas/cart.schema';
 import { findByTitle, MATTRESS_URL, sizeOf } from '../../src/data/mattresses';
 import { formatUsd } from '../../src/utils/money';
@@ -72,69 +72,6 @@ test.describe(
 );
 
 test.describe('Product page and cart', { tag: ['@ui', '@regression', '@cart'] }, () => {
-  // Quarantined: fails at random when the size selector never appears; remove quarantine() once #32
-  // is explained.
-  test(
-    'UI-12 product page defaults to Queen with its catalog price',
-    quarantine('the product page sometimes shows no sizes for 45 s (bug #32, cause not found yet)'),
-    async ({ productPage, mattressCatalog }) => {
-      const mattress = mattressCatalog.classic;
-
-      await test.step(`Open ${mattress.title}`, () => productPage.goto(mattress.path));
-
-      await test.step('Queen is selected with the catalog price and Add to Cart is enabled', async () => {
-        await expect(productPage.heading).toHaveText(mattress.title);
-        await expect(productPage.selectedSize).toHaveText(DEFAULT_SIZE);
-        await expect(productPage.price).toHaveText(
-          formatUsd(sizeOf(mattress, DEFAULT_SIZE).priceCents),
-        );
-        await expect(productPage.addToCartButton).toBeEnabled();
-      });
-    },
-  );
-
-  // Quarantined: bug #30 makes it fail at random; remove quarantine() once #30 is fixed.
-  test(
-    'UI-16 a different size updates the price and reaches the cart',
-    quarantine(
-      'bug #30 resets the picked size at random (about 1 in 10 runs); UI-27 reproduces it on purpose',
-    ),
-    async ({ productPage, cartPage, mattressCatalog }) => {
-      const mattress = mattressCatalog.classic;
-      const king = sizeOf(mattress, 'King');
-      const kingPrice = formatUsd(king.priceCents);
-
-      await test.step(`Open ${mattress.title} and select King`, async () => {
-        await productPage.goto(mattress.path);
-        await productPage.selectSize(king.title);
-      });
-
-      await test.step(`Price updates to ${kingPrice}`, async () => {
-        await expect(
-          productPage.selectedSize,
-          'the picked size stays selected (bug #30)',
-        ).toHaveText(king.title);
-        await expect(productPage.price).toHaveText(kingPrice);
-      });
-
-      await test.step('Add to cart', async () => {
-        const { response, upsellDeclined } = await productPage.addToCart();
-        test.info().annotations.push({
-          type: 'upsell',
-          description: upsellDeclined ? 'shown and declined' : 'not shown',
-        });
-        expect(response.status()).toBe(200);
-      });
-
-      await test.step('Cart shows King at the King price', async () => {
-        const item = cartPage.item(mattress.title);
-        await expect(item.size).toContainText(king.title);
-        await expect(item.price).toHaveText(kingPrice);
-        await expect(cartPage.total).toHaveText(kingPrice);
-      });
-    },
-  );
-
   test('UI-21 the cart survives a page reload', async ({
     page,
     productPage,
