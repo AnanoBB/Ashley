@@ -1,11 +1,14 @@
-import { expect, type Locator, type Page, type Response } from '@playwright/test';
+import { errors, expect, type Locator, type Page, type Response } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { escapeRegExp } from '../utils/regexp';
 
 /** The buy box (sizes, prices) loads after hydration and can take >15 s on the shared QA env. */
 const BUY_BOX_TIMEOUT = 45_000;
-/** Click to cart page took 5-15 s in QA runs (2026-11-23); twice the longest seen. */
-const ADD_TO_CART_TIMEOUT = 30_000;
+/**
+ * Click to cart page: usually 5-15 s on the QA env, but over 30 s when the add succeeds and the app
+ * is slow to route (bug #25, 2026-11-23); 30 s failed the assignment flow, so allow 60 s.
+ */
+const ADD_TO_CART_TIMEOUT = 60_000;
 
 export interface AddToCartResult {
   /** The `POST /carts/my/items` response sent by the storefront. */
@@ -55,7 +58,10 @@ export class ProductPage extends BasePage {
    * reset the size (exploration #30, UI-27); tests don't wait it out.
    */
   async waitUntilReady(): Promise<void> {
-    await expect(this.price).toHaveText(/\$\d/, { timeout: BUY_BOX_TIMEOUT });
+    await expect(
+      this.price,
+      'the size selector with its price appears (bug #32: sometimes it never does)',
+    ).toHaveText(/\$\d/, { timeout: BUY_BOX_TIMEOUT });
     await expect(this.addToCartButton).toBeEnabled();
   }
 
@@ -74,11 +80,21 @@ export class ProductPage extends BasePage {
    */
   async addToCart(): Promise<AddToCartResult> {
     const result = await this.submitAddToCart();
+    // A failed add doesn't route; the test's status check then reports the real cause.
+    if (!result.response.ok()) {
+      return result;
+    }
     // 'commit': the URL change is the routing; the `load` event can take over a minute (BasePage).
-    await this.page.waitForURL('**/checkout/cart', {
-      waitUntil: 'commit',
-      timeout: ADD_TO_CART_TIMEOUT,
-    });
+    await this.page
+      .waitForURL('**/checkout/cart', { waitUntil: 'commit', timeout: ADD_TO_CART_TIMEOUT })
+      .catch((error: unknown) => {
+        if (!(error instanceof errors.TimeoutError)) throw error;
+        throw new Error(
+          `Add to cart answered ${result.response.status()}, but the app didn't open /checkout/cart ` +
+            `within ${ADD_TO_CART_TIMEOUT / 1000} s (bug #25)`,
+          { cause: error },
+        );
+      });
     return result;
   }
 
